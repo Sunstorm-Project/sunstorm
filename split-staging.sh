@@ -18,7 +18,10 @@ SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 . "${SCRIPTDIR}/lib/sst-common.sh"
 
 PREFIX="/opt/sunstorm"
-GCC49="${PREFIX}/gcc49"
+GCC_SUBDIR="gcc"
+GCC_DIR="${PREFIX}/${GCC_SUBDIR}"
+GCC_VER="4.9.4"
+TARGET="${TARGET}"
 
 echo "============================================"
 echo "  Sunstorm Package Splitter"
@@ -27,25 +30,33 @@ echo "  Output:  ${OUTPUT}"
 echo "============================================"
 echo ""
 
-# Verify staging exists
-if [ ! -d "${STAGING}/usr/tgcware" ]; then
-    echo "ERROR: Staging directory ${STAGING}/usr/tgcware not found"
-    exit 1
+# Verify staging exists — look for the install root inside staging
+STAGING_ROOT="${STAGING}/opt/sst"
+if [ ! -d "${STAGING_ROOT}" ]; then
+    # Fallback: check legacy layout
+    for _try in "${STAGING}/opt/sunstorm" "${STAGING}/usr/local"; do
+        if [ -d "$_try" ]; then
+            STAGING_ROOT="$_try"
+            break
+        fi
+    done
+    if [ ! -d "${STAGING_ROOT}" ]; then
+        echo "ERROR: No install root found under ${STAGING}/"
+        exit 1
+    fi
 fi
 
-# Source layout in staging (built for /usr/tgcware):
-#   usr/tgcware/gcc49/bin/         — compiler drivers
-#   usr/tgcware/lib/gcc/...4.9.4/  — cc1, cc1plus, f951, libs
-#   usr/tgcware/libexec/gcc/...    — compiler backends
-#   usr/tgcware/lib/libgcc_s.so*   — libgcc runtime
-#   usr/tgcware/lib/libstdc++.*    — libstdc++ runtime + static
-#   usr/tgcware/lib/libgomp.*      — OpenMP runtime
-#   usr/tgcware/include/c++/4.9.4/ — C++ headers
-#   usr/tgcware/bin/g*             — binutils (g-prefixed)
-#
-# We remap /usr/tgcware -> /opt/sunstorm in the package roots.
+# Source layout in staging (built for ${PREFIX}):
+#   ${GCC_SUBDIR}/bin/         — compiler drivers
+#   lib/gcc/...${GCC_VER}/  — cc1, cc1plus, f951, libs
+#   libexec/gcc/...    — compiler backends
+#   lib/libgcc_s.so*   — libgcc runtime
+#   lib/libstdc++.*    — libstdc++ runtime + static
+#   lib/libgomp.*      — OpenMP runtime
+#   include/c++/${GCC_VER}/ — C++ headers
+#   bin/g*             — binutils (g-prefixed)
 
-SRC="${STAGING}/usr/tgcware"
+SRC="${STAGING_ROOT}"
 
 # Helper: copy files from staging to package root, remapping prefix
 pkg_copy() {
@@ -119,43 +130,43 @@ pkg_copy binutils \
     bin/gobjdump bin/gobjcopy bin/gstrip bin/greadelf \
     bin/gsize bin/gstrings bin/gaddr2line bin/gc++filt \
     bin/gelfedit bin/ggprof \
-    sparc-sun-solaris2.7/bin/
+    ${TARGET}/bin/
 
 # ============================================================
-# SSTlgcc1 — libgcc runtime
+# SSTlgcc — libgcc runtime
 # ============================================================
-echo "--- SSTlgcc1: libgcc runtime ---"
+echo "--- SSTlgcc: libgcc runtime ---"
 pkg_meta libgcc
 pkg_copy libgcc \
     lib/libgcc_s.so lib/libgcc_s.so.1 \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/libgcc.a \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/libgcc_eh.a \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/libgcov.a \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtbegin.o \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtend.o \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtbeginS.o \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtendS.o \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtbeginT.o \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/crtfastmath.o
+    lib/gcc/${TARGET}/${GCC_VER}/libgcc.a \
+    lib/gcc/${TARGET}/${GCC_VER}/libgcc_eh.a \
+    lib/gcc/${TARGET}/${GCC_VER}/libgcov.a \
+    lib/gcc/${TARGET}/${GCC_VER}/crtbegin.o \
+    lib/gcc/${TARGET}/${GCC_VER}/crtend.o \
+    lib/gcc/${TARGET}/${GCC_VER}/crtbeginS.o \
+    lib/gcc/${TARGET}/${GCC_VER}/crtendS.o \
+    lib/gcc/${TARGET}/${GCC_VER}/crtbeginT.o \
+    lib/gcc/${TARGET}/${GCC_VER}/crtfastmath.o
 
 # ============================================================
-# SSTgcc49 — GCC 4.9.4 C compiler
+# SSTgcc — GCC C compiler
 # ============================================================
-echo "--- SSTgcc49: GCC 4.9.4 C compiler ---"
+echo "--- SSTgcc: GCC C compiler ---"
 pkg_meta gcc
 pkg_copy gcc \
-    gcc49/bin/gcc gcc49/bin/cpp gcc49/bin/gcov \
-    gcc49/bin/gcc-ar gcc49/bin/gcc-nm gcc49/bin/gcc-ranlib \
-    gcc49/bin/sparc-sun-solaris2.7-gcc-4.9.4 \
-    gcc49/man/ gcc49/info/ \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/cc1 \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/collect2 \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/lto-wrapper \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/lto1 \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/install-tools/ \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/include/ \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/include-fixed/ \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/install-tools/
+    ${GCC_SUBDIR}/bin/gcc ${GCC_SUBDIR}/bin/cpp ${GCC_SUBDIR}/bin/gcov \
+    ${GCC_SUBDIR}/bin/gcc-ar ${GCC_SUBDIR}/bin/gcc-nm ${GCC_SUBDIR}/bin/gcc-ranlib \
+    ${GCC_SUBDIR}/bin/${TARGET}-gcc-${GCC_VER} \
+    ${GCC_SUBDIR}/man/ ${GCC_SUBDIR}/info/ \
+    libexec/gcc/${TARGET}/${GCC_VER}/cc1 \
+    libexec/gcc/${TARGET}/${GCC_VER}/collect2 \
+    libexec/gcc/${TARGET}/${GCC_VER}/lto-wrapper \
+    libexec/gcc/${TARGET}/${GCC_VER}/lto1 \
+    libexec/gcc/${TARGET}/${GCC_VER}/install-tools/ \
+    lib/gcc/${TARGET}/${GCC_VER}/include/ \
+    lib/gcc/${TARGET}/${GCC_VER}/include-fixed/ \
+    lib/gcc/${TARGET}/${GCC_VER}/install-tools/
 
 # ============================================================
 # SSTlstdc — libstdc++ shared
@@ -172,35 +183,35 @@ echo "--- SSTlstdd: libstdc++ devel ---"
 pkg_meta libstdcxx-devel
 pkg_copy libstdcxx-devel \
     lib/libstdc++.a \
-    include/c++/4.9.4/
+    include/c++/${GCC_VER}/
 
 # ============================================================
-# SSTg49cx — GCC C++ compiler
+# SSTgcxx — GCC C++ compiler
 # ============================================================
-echo "--- SSTg49cx: GCC C++ compiler ---"
+echo "--- SSTgcxx: GCC C++ compiler ---"
 pkg_meta gcc-cxx
 pkg_copy gcc-cxx \
-    gcc49/bin/g++ gcc49/bin/c++ \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/cc1plus
+    ${GCC_SUBDIR}/bin/g++ ${GCC_SUBDIR}/bin/c++ \
+    libexec/gcc/${TARGET}/${GCC_VER}/cc1plus
 
 # ============================================================
-# SSTg49cf — GCC Fortran compiler
+# SSTgftn — GCC Fortran compiler
 # ============================================================
-echo "--- SSTg49cf: GCC Fortran compiler ---"
+echo "--- SSTgftn: GCC Fortran compiler ---"
 pkg_meta gcc-fortran
 pkg_copy gcc-fortran \
-    gcc49/bin/gfortran \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/f951 \
-    lib/gcc/sparc-sun-solaris2.7/4.9.4/finclude/
+    ${GCC_SUBDIR}/bin/gfortran \
+    libexec/gcc/${TARGET}/${GCC_VER}/f951 \
+    lib/gcc/${TARGET}/${GCC_VER}/finclude/
 
 # ============================================================
-# SSTg49co — GCC Objective-C/C++ compiler
+# SSTgobjc — GCC Objective-C/C++ compiler
 # ============================================================
-echo "--- SSTg49co: GCC Objective-C/C++ compiler ---"
+echo "--- SSTgobjc: GCC Objective-C/C++ compiler ---"
 pkg_meta gcc-objc
 pkg_copy gcc-objc \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/cc1obj \
-    libexec/gcc/sparc-sun-solaris2.7/4.9.4/cc1objplus
+    libexec/gcc/${TARGET}/${GCC_VER}/cc1obj \
+    libexec/gcc/${TARGET}/${GCC_VER}/cc1objplus
 
 # ============================================================
 # SSTlgomp — OpenMP runtime

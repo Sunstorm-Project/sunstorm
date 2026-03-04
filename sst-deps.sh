@@ -4,7 +4,7 @@
 #
 # Usage: ./sst-deps.sh [pkgname]
 #        ./sst-deps.sh          — show all packages and deps
-#        ./sst-deps.sh gcc49    — show install order for gcc49
+#        ./sst-deps.sh gcc      — show install order for gcc
 
 set -e
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
@@ -68,7 +68,7 @@ if [ -z "$1" ]; then
     done
 else
     _target="$1"
-    # Allow short names: gcc49 -> SSTgcc49
+    # Allow short names: gcc -> SSTgcc
     case "$_target" in SST*) ;; *) _target="SST${_target}" ;; esac
 
     echo "Install order for ${_target}:"

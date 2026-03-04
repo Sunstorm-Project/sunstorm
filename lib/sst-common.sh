@@ -17,10 +17,10 @@ SST_OS="sunos5.7"
 
 # Package filename convention:
 #   <SSTcode>-<version>-<pkgrev>.sst-sunos5.7-sparc.pkg.gz
-# Example: SSTgcc49-4.9.4-1.sst-sunos5.7-sparc.pkg.gz
+# Example: SSTgcc-4.9.4-1.sst-sunos5.7-sparc.pkg.gz
 sst_pkgfile() {
-    _code="$1"    # e.g. SSTgcc49
-    _ver="$2"     # e.g. 4.9.4
+    _code="$1"    # e.g. SSTgcc
+    _ver="$2"     # version string
     _rev="$3"     # e.g. 1
     echo "${_code}-${_ver}-${_rev}.sst-${SST_OS}-${SST_ARCH}.pkg.gz"
 }
@@ -34,7 +34,7 @@ SST_INFODIR="${SST_BASEDIR}/share/info"
 SST_DOCDIR="${SST_BASEDIR}/share/doc"
 
 # Versioned compiler prefixes
-SST_GCC49="${SST_BASEDIR}/gcc49"
+SST_GCC="${SST_BASEDIR}/gcc"
 
 # Packaging metadata
 SST_VENDOR="Sunstorm Project"

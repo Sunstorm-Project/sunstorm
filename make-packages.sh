@@ -62,7 +62,7 @@ if [ "$1" = "--finalize" ]; then
         
         echo "  Extracting: $(basename "$tarball")"
         cd "$_tmpdir"
-        /usr/tgcware/bin/gtar xzf "$tarball" 2>/dev/null || tar xf "$tarball"
+        gtar xzf "$tarball" 2>/dev/null || tar xf "$tarball"
         
         # Generate .pkg.gz from extracted staging
         _create_svr4_pkg "$_tmpdir" "${OUTPUT}"

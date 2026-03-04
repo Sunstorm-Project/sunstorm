@@ -1,7 +1,7 @@
 #!/bin/sh
-# postinstall for SSTgcc
-# Register library path (GCC depends on libgmp, libmpfr, libmpc in BASEDIR/lib)
-# and configure PATH + LD_LIBRARY_PATH in the login profile.
+# postinstall for SSTlstdc
+# Register library directory with the Solaris runtime linker (crle)
+# and ensure LD_LIBRARY_PATH is set in the login profile.
 
 LIBDIR="${BASEDIR}/lib"
 
@@ -21,7 +21,7 @@ if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
     esac
 fi
 
-# --- Login profile: PATH + LD_LIBRARY_PATH ---
+# --- Login profile: LD_LIBRARY_PATH + PATH ---
 PROFILE_DIR=/etc/profile.d
 if [ -d "$PROFILE_DIR" ] || mkdir -p "$PROFILE_DIR" 2>/dev/null; then
     cat > "$PROFILE_DIR/sunstorm.sh" << 'PROFEOF'
@@ -38,6 +38,4 @@ if [ -d "$SST_ROOT/lib" ]; then
 fi
 export PATH LD_LIBRARY_PATH
 PROFEOF
-    echo "Sunstorm: PATH configured in $PROFILE_DIR/sunstorm.sh"
-    echo "Run '. $PROFILE_DIR/sunstorm.sh' or log in again to activate."
 fi

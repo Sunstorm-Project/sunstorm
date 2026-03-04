@@ -2,10 +2,10 @@
 # package-installed.sh — Create SVR4 packages from installed software
 #
 # Runs on the Solaris 7 VM. Scans files already installed under
-# /usr/tgcware (cross-build output) and packages them into individual
+# INSTALL_ROOT (cross-build output) and packages them into individual
 # sunstorm .pkg.gz files with proper dependency metadata.
 #
-# Usage: /bin/ksh package-installed.sh [output_dir]
+# Usage: /bin/ksh package-installed.sh [output_dir] [install_root]
 #
 # This is useful for creating the initial sunstorm package set from the
 # existing cross-build installation without re-running the cross-build.
@@ -13,10 +13,13 @@
 set -e
 
 OUTPUT="${1:-/export/sunstorm-packages}"
-PREFIX=/usr/tgcware
-GCC49=${PREFIX}/gcc49
+INSTALL_ROOT="${2:-/opt/sst}"
+PREFIX="${INSTALL_ROOT}"
+GCC_SUBDIR=gcc
+GCC_DIR=${PREFIX}/${GCC_SUBDIR}
 TARGET=sparc-sun-solaris2.7
 GCC_VER=4.9.4
+SST_PREFIX=/opt/sunstorm
 
 TMPDIR=/tmp/sst-pkg-$$
 SPOOLDIR=${TMPDIR}/spool
@@ -68,6 +71,20 @@ make_pkg() {
     mkdir -p "${_stagedir}"
     
     echo "--- ${_code}: ${_name} ---"
+    
+    # Check if file list has any actual files
+    _realcount=0
+    while IFS= read -r _chkline; do
+        case "$_chkline" in
+            \#*|"") continue ;;
+        esac
+        [ -e "${PREFIX}/${_chkline}" ] && _realcount=$((_realcount + 1))
+    done < "${_files}"
+    if [ ${_realcount} -eq 0 ]; then
+        echo "  SKIPPED (no files found)"
+        echo ""
+        return 0
+    fi
     
     # Generate pkginfo
     cat > "${_stagedir}/pkginfo" << EOF
@@ -146,6 +163,169 @@ EOF
 }
 
 # ============================================================
+# Helper: create the symlink package (BASEDIR=/opt/sunstorm)
+# ============================================================
+# This builds SSTlink — a package of symlinks under /opt/sunstorm/bin
+# and /opt/sunstorm/sbin that point to actual binaries scattered across
+# the install root (PREFIX/bin, PREFIX/${GCC_SUBDIR}/bin, etc).
+# Users only need:  PATH=/opt/sunstorm/bin:$PATH
+make_links_pkg() {
+    _code="SSTlink"
+    _name="sunstorm-links - Centralized binary symlinks"
+    _ver="1.0"
+    _desc="Symlinks in /opt/sunstorm/bin for unified toolchain access"
+
+    _stagedir="${TMPDIR}/${_code}"
+    rm -rf "${_stagedir}"
+    mkdir -p "${_stagedir}"
+
+    echo "--- ${_code}: ${_name} ---"
+
+    # pkginfo — note BASEDIR is /opt/sunstorm, not the install root
+    cat > "${_stagedir}/pkginfo" << EOF
+PKG="${_code}"
+NAME="${_name}"
+ARCH="${PKG_ARCH}"
+VERSION="${_ver},REV=1"
+CATEGORY="application"
+VENDOR="${PKG_VENDOR}"
+EMAIL="${PKG_EMAIL}"
+BASEDIR="${SST_PREFIX}"
+CLASSES="none"
+PSTAMP="$(hostname)$(date '+%Y%m%d%H%M%S')"
+DESC="${_desc}"
+EOF
+
+    # depend
+    cat > "${_stagedir}/depend" << 'DEPEOF'
+P SSTbinut  GNU binary utilities
+P SSTgcc  GCC C compiler
+DEPEOF
+
+    # postinstall — configure PATH and LD_LIBRARY_PATH
+    cat > "${_stagedir}/postinstall" << 'PIEOF'
+#!/bin/sh
+PROFILE_DIR=/etc/profile.d
+if [ -d "${PROFILE_DIR}" ] || mkdir -p "${PROFILE_DIR}" 2>/dev/null; then
+    cat > "${PROFILE_DIR}/sunstorm.sh" << 'EOF'
+# Sunstorm distribution environment setup
+SST_ROOT=/opt/sst
+if [ -d "$SST_ROOT/gcc/bin" ]; then
+    PATH=$SST_ROOT/gcc/bin:$PATH
+fi
+if [ -d "$SST_ROOT/bin" ]; then
+    PATH=$SST_ROOT/bin:$PATH
+fi
+if [ -d "$SST_ROOT/lib" ]; then
+    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+fi
+export PATH LD_LIBRARY_PATH
+EOF
+    echo "Sunstorm: PATH configured in ${PROFILE_DIR}/sunstorm.sh"
+    echo "Sunstorm: Run '. ${PROFILE_DIR}/sunstorm.sh' or log in again."
+else
+    echo "Sunstorm: Add /opt/sst/bin and /opt/sst/gcc/bin to your PATH manually."
+fi
+PIEOF
+
+    # Build the prototype with symlinks.
+    # Each symlink lives under bin/ (relative to BASEDIR=/opt/sunstorm)
+    # and points to the real absolute path of the binary.
+    _count=0
+    {
+        echo "i pkginfo"
+        echo "i depend"
+        echo "i postinstall"
+        echo "d none bin 0755 root bin"
+        echo "d none sbin 0755 root bin"
+
+        # --- GCC binaries (from ${GCC_DIR}/bin) ---
+        for _bin in gcc g++ c++ cpp gcov gcc-ar gcc-nm gcc-ranlib gfortran; do
+            if [ -f "${GCC_DIR}/bin/${_bin}" ]; then
+                echo "s none bin/${_bin}=${GCC_DIR}/bin/${_bin}"
+                _count=$((_count + 1))
+            fi
+        done
+        # Also provide 'cc' pointing to gcc
+        if [ -f "${GCC_DIR}/bin/gcc" ]; then
+            echo "s none bin/cc=${GCC_DIR}/bin/gcc"
+            _count=$((_count + 1))
+        fi
+
+        # --- Binutils (from ${PREFIX}/bin) —
+        # Original g-prefixed names
+        for _bin in gas gld gar gnm granlib gobjdump gobjcopy gstrip \
+                    greadelf gsize gstrings gaddr2line gc++filt gelfedit ggprof; do
+            if [ -f "${PREFIX}/bin/${_bin}" ]; then
+                echo "s none bin/${_bin}=${PREFIX}/bin/${_bin}"
+                _count=$((_count + 1))
+            fi
+        done
+
+        # Standard GNU names (without the g- prefix) for convenience
+        # as→gas, ld→gld, ar→gar, nm→gnm, ranlib→granlib, etc.
+        for _pair in \
+            "as=gas" \
+            "ld=gld" \
+            "ar=gar" \
+            "nm=gnm" \
+            "ranlib=granlib" \
+            "objdump=gobjdump" \
+            "objcopy=gobjcopy" \
+            "strip=gstrip" \
+            "readelf=greadelf" \
+            "size=gsize" \
+            "strings=gstrings" \
+            "addr2line=gaddr2line" \
+            "c++filt=gc++filt" \
+            "elfedit=gelfedit" \
+            "gprof=ggprof"; do
+            _stdname="${_pair%%=*}"
+            _realname="${_pair#*=}"
+            if [ -f "${PREFIX}/bin/${_realname}" ]; then
+                echo "s none bin/${_stdname}=${PREFIX}/bin/${_realname}"
+                _count=$((_count + 1))
+            fi
+        done
+    } > "${_stagedir}/prototype"
+    echo "  Symlinks: ${_count}"
+
+    # Create the package — we need a fake root for pkgmk since
+    # it will try to verify the symlink targets exist. We create
+    # a staging area with just the symlinks.
+    _linkroot="${TMPDIR}/linkroot"
+    rm -rf "${_linkroot}"
+    mkdir -p "${_linkroot}/bin" "${_linkroot}/sbin"
+
+    # Actually create the symlinks so pkgmk can find them
+    grep '^s none' "${_stagedir}/prototype" | while IFS= read -r _sline; do
+        _entry="${_sline#s none }"
+        _lpath="${_entry%%=*}"
+        _ltarget="${_entry#*=}"
+        ln -sf "${_ltarget}" "${_linkroot}/${_lpath}" 2>/dev/null || true
+    done
+
+    rm -rf "${SPOOLDIR}"
+    mkdir -p "${SPOOLDIR}"
+
+    pkgmk -o -d "${SPOOLDIR}" -r "${_linkroot}" -f "${_stagedir}/prototype" 2>&1 || {
+        echo "  ERROR: pkgmk failed for ${_code}"
+        return 1
+    }
+
+    _pkgfile="${OUTPUT}/${_code}-${_ver}-1.sst-${SST_OS}-sparc.pkg"
+    pkgtrans -s "${SPOOLDIR}" "${_pkgfile}" "${_code}" 2>&1 || {
+        echo "  ERROR: pkgtrans failed for ${_code}"
+        return 1
+    }
+
+    gzip -9f "${_pkgfile}"
+    _size=$(ls -lh "${_pkgfile}.gz" | awk '{print $5}')
+    echo "  Created: ${_code}-${_ver}-1.sst-${SST_OS}-sparc.pkg.gz (${_size})"
+    echo ""
+}
+
+# ============================================================
 # Generate file lists by scanning installed files
 # ============================================================
 echo "Scanning installed files..."
@@ -174,7 +354,8 @@ mkdir -p "${LISTS}" "${DEPS}"
 
 # --- SSTgmp: GMP ---
 {
-    for f in lib/libgmp.so lib/libgmp.so.10 lib/libgmp.so.10.3.2 lib/libgmp.a; do
+    for f in lib/libgmp.so lib/libgmp.so.10 lib/libgmp.so.10.3.2 lib/libgmp.a \
+             lib/libgmpxx.so lib/libgmpxx.so.4 lib/libgmpxx.so.4.5.2 lib/libgmpxx.a; do
         [ -e "${PREFIX}/${f}" ] && echo "$f"
     done
     [ -f "${PREFIX}/include/gmp.h" ] && echo "include/gmp.h"
@@ -198,7 +379,7 @@ mkdir -p "${LISTS}" "${DEPS}"
     [ -f "${PREFIX}/include/mpc.h" ] && echo "include/mpc.h"
 } > "${LISTS}/mpc"
 
-# --- SSTlgcc1: libgcc runtime ---
+# --- SSTlgcc: libgcc runtime ---
 {
     for f in lib/libgcc_s.so lib/libgcc_s.so.1; do
         [ -e "${PREFIX}/${f}" ] && echo "$f"
@@ -206,25 +387,30 @@ mkdir -p "${LISTS}" "${DEPS}"
     for f in lib/gcc/${TARGET}/${GCC_VER}/libgcc.a \
              lib/gcc/${TARGET}/${GCC_VER}/libgcc_eh.a \
              lib/gcc/${TARGET}/${GCC_VER}/libgcov.a \
+             lib/gcc/${TARGET}/${GCC_VER}/crt1.o \
+             lib/gcc/${TARGET}/${GCC_VER}/crti.o \
+             lib/gcc/${TARGET}/${GCC_VER}/crtn.o \
              lib/gcc/${TARGET}/${GCC_VER}/crtbegin.o \
              lib/gcc/${TARGET}/${GCC_VER}/crtend.o \
              lib/gcc/${TARGET}/${GCC_VER}/crtbeginS.o \
              lib/gcc/${TARGET}/${GCC_VER}/crtendS.o \
              lib/gcc/${TARGET}/${GCC_VER}/crtbeginT.o \
-             lib/gcc/${TARGET}/${GCC_VER}/crtfastmath.o; do
+             lib/gcc/${TARGET}/${GCC_VER}/crtfastmath.o \
+             lib/gcc/${TARGET}/${GCC_VER}/gcrt1.o \
+             lib/gcc/${TARGET}/${GCC_VER}/gmon.o; do
         [ -f "${PREFIX}/${f}" ] && echo "$f"
     done
 } > "${LISTS}/libgcc"
 
-# --- SSTgcc49: GCC C compiler ---
+# --- SSTgcc: GCC C compiler ---
 {
-    for f in gcc49/bin/gcc gcc49/bin/cpp gcc49/bin/gcov \
-             gcc49/bin/gcc-ar gcc49/bin/gcc-nm gcc49/bin/gcc-ranlib; do
+    for f in ${GCC_SUBDIR}/bin/gcc ${GCC_SUBDIR}/bin/cpp ${GCC_SUBDIR}/bin/gcov \
+             ${GCC_SUBDIR}/bin/gcc-ar ${GCC_SUBDIR}/bin/gcc-nm ${GCC_SUBDIR}/bin/gcc-ranlib; do
         [ -f "${PREFIX}/${f}" ] && echo "$f"
     done
     # Cross-name symlink
-    [ -f "${PREFIX}/gcc49/bin/${TARGET}-gcc-${GCC_VER}" ] && echo "gcc49/bin/${TARGET}-gcc-${GCC_VER}"
-    [ -f "${PREFIX}/gcc49/bin/${TARGET}-gcc" ] && echo "gcc49/bin/${TARGET}-gcc"
+    [ -f "${GCC_DIR}/bin/${TARGET}-gcc-${GCC_VER}" ] && echo "${GCC_SUBDIR}/bin/${TARGET}-gcc-${GCC_VER}"
+    [ -f "${GCC_DIR}/bin/${TARGET}-gcc" ] && echo "${GCC_SUBDIR}/bin/${TARGET}-gcc"
     # Compiler backends
     for f in libexec/gcc/${TARGET}/${GCC_VER}/cc1 \
              libexec/gcc/${TARGET}/${GCC_VER}/collect2 \
@@ -240,17 +426,17 @@ mkdir -p "${LISTS}" "${DEPS}"
         find "${PREFIX}/lib/gcc/${TARGET}/${GCC_VER}/include-fixed" -type f | sed "s|^${PREFIX}/||"
     fi
     # Man/info pages
-    if [ -d "${PREFIX}/gcc49/man" ]; then
-        find "${PREFIX}/gcc49/man" -type f | sed "s|^${PREFIX}/||"
+    if [ -d "${GCC_DIR}/man" ]; then
+        find "${GCC_DIR}/man" -type f | sed "s|^${PREFIX}/||"
     fi
-    if [ -d "${PREFIX}/gcc49/info" ]; then
-        find "${PREFIX}/gcc49/info" -type f | sed "s|^${PREFIX}/||"
+    if [ -d "${GCC_DIR}/info" ]; then
+        find "${GCC_DIR}/info" -type f | sed "s|^${PREFIX}/||"
     fi
 } > "${LISTS}/gcc"
 
 # --- SSTlstdc: libstdc++ shared ---
 {
-    for f in lib/libstdc++.so lib/libstdc++.so.6 lib/libstdc++.so.6.0.20; do
+    for f in lib/libstdc++.so lib/libstdc++.so.6 lib/libstdc++.so.6.0.20 lib/libstdc++.so.6.0.20-gdb.py; do
         [ -e "${PREFIX}/${f}" ] && echo "$f"
     done
 } > "${LISTS}/libstdcxx"
@@ -263,9 +449,9 @@ mkdir -p "${LISTS}" "${DEPS}"
     fi
 } > "${LISTS}/libstdcxx-devel"
 
-# --- SSTg49cx: GCC C++ ---
+# --- SSTgcxx: GCC C++ ---
 {
-    for f in gcc49/bin/g++ gcc49/bin/c++; do
+    for f in ${GCC_SUBDIR}/bin/g++ ${GCC_SUBDIR}/bin/c++; do
         [ -f "${PREFIX}/${f}" ] && echo "$f"
     done
     [ -f "${PREFIX}/libexec/gcc/${TARGET}/${GCC_VER}/cc1plus" ] && echo "libexec/gcc/${TARGET}/${GCC_VER}/cc1plus"
@@ -278,9 +464,9 @@ mkdir -p "${LISTS}" "${DEPS}"
     done
 } > "${LISTS}/libgfortran"
 
-# --- SSTg49cf: GCC Fortran ---
+# --- SSTgftn: GCC Fortran ---
 {
-    [ -f "${PREFIX}/gcc49/bin/gfortran" ] && echo "gcc49/bin/gfortran"
+    [ -f "${GCC_DIR}/bin/gfortran" ] && echo "${GCC_SUBDIR}/bin/gfortran"
     [ -f "${PREFIX}/libexec/gcc/${TARGET}/${GCC_VER}/f951" ] && echo "libexec/gcc/${TARGET}/${GCC_VER}/f951"
     if [ -d "${PREFIX}/lib/gcc/${TARGET}/${GCC_VER}/finclude" ]; then
         find "${PREFIX}/lib/gcc/${TARGET}/${GCC_VER}/finclude" -type f | sed "s|^${PREFIX}/||"
@@ -294,7 +480,7 @@ mkdir -p "${LISTS}" "${DEPS}"
     done
 } > "${LISTS}/libobjc"
 
-# --- SSTg49co: GCC Objective-C ---
+# --- SSTgobjc: GCC Objective-C ---
 {
     [ -f "${PREFIX}/libexec/gcc/${TARGET}/${GCC_VER}/cc1obj" ] && echo "libexec/gcc/${TARGET}/${GCC_VER}/cc1obj"
     [ -f "${PREFIX}/libexec/gcc/${TARGET}/${GCC_VER}/cc1objplus" ] && echo "libexec/gcc/${TARGET}/${GCC_VER}/cc1objplus"
@@ -302,7 +488,10 @@ mkdir -p "${LISTS}" "${DEPS}"
 
 # --- SSTlgomp: libgomp ---
 {
-    for f in lib/libgomp.so lib/libgomp.so.1 lib/libgomp.so.1.0.0 lib/libgomp.a; do
+    for f in lib/libgomp.so lib/libgomp.so.1 lib/libgomp.so.1.0.0 lib/libgomp.a \
+             lib/libitm.so lib/libitm.so.1 lib/libitm.so.1.0.0 \
+             lib/libssp.so lib/libssp.so.0 lib/libssp.so.0.0.0 \
+             lib/libsparcatomic.so lib/libsparcatomic.so.1 lib/libsparcatomic.so.1.3.0; do
         [ -e "${PREFIX}/${f}" ] && echo "$f"
     done
 } > "${LISTS}/libgomp"
@@ -330,14 +519,14 @@ EOF
 
 cat > "${DEPS}/gcc" << 'EOF'
 P SSTbinut  GNU binary utilities
-P SSTlgcc1  GCC runtime library
+P SSTlgcc  GCC runtime library
 P SSTgmp    GNU Multiple Precision Arithmetic Library
 P SSTmpfr   GNU Multiple Precision Floating-Point Library
 P SSTmpc    GNU Multiple Precision Complex Library
 EOF
 
 cat > "${DEPS}/libstdcxx" << 'EOF'
-P SSTlgcc1  GCC runtime library
+P SSTlgcc  GCC runtime library
 EOF
 
 cat > "${DEPS}/libstdcxx-devel" << 'EOF'
@@ -345,53 +534,119 @@ P SSTlstdc  libstdc++ shared library
 EOF
 
 cat > "${DEPS}/gcc-cxx" << 'EOF'
-P SSTgcc49  GCC 4.9.4 C compiler
+P SSTgcc  GCC C compiler
 P SSTlstdc  libstdc++ shared library
 P SSTlstdd  libstdc++ headers and static library
 EOF
 
 cat > "${DEPS}/libgfortran" << 'EOF'
-P SSTlgcc1  GCC runtime library
+P SSTlgcc  GCC runtime library
 EOF
 
 cat > "${DEPS}/gcc-fortran" << 'EOF'
-P SSTgcc49  GCC 4.9.4 C compiler
-P SSTlgcc1  GCC runtime library
+P SSTgcc  GCC C compiler
+P SSTlgcc  GCC runtime library
 P SSTlgfrt  GCC Fortran runtime library
 EOF
 
 cat > "${DEPS}/libobjc" << 'EOF'
-P SSTlgcc1  GCC runtime library
+P SSTlgcc  GCC runtime library
 EOF
 
 cat > "${DEPS}/gcc-objc" << 'EOF'
-P SSTgcc49  GCC 4.9.4 C compiler
-P SSTlgcc1  GCC runtime library
+P SSTgcc  GCC C compiler
+P SSTlgcc  GCC runtime library
 P SSTlobjc  GCC Objective-C runtime library
 EOF
 
 cat > "${DEPS}/libgomp" << 'EOF'
-P SSTlgcc1  GCC runtime library
+P SSTlgcc  GCC runtime library
 EOF
 
-# Postinstall for gcc
-POSTINSTALL=${TMPDIR}/postinstall-gcc
-cat > "${POSTINSTALL}" << 'POSTEOF'
+# ============================================================
+# Generate postinstall scripts
+# ============================================================
+
+# Common postinstall for library packages:
+# 1. Register INSTALL_ROOT/lib with the Solaris runtime linker (crle)
+# 2. Ensure LD_LIBRARY_PATH is configured in /etc/profile.d
+POSTINSTALL_LIB=${TMPDIR}/postinstall-lib
+cat > "${POSTINSTALL_LIB}" << 'LIBPOSTEOF'
 #!/bin/sh
-mkdir -p /etc/profile.d 2>/dev/null
-cat > /etc/profile.d/sunstorm.sh << 'EOF'
-# Sunstorm distribution PATH setup
-if [ -d /usr/tgcware/gcc49/bin ]; then
-    PATH=/usr/tgcware/gcc49/bin:/usr/tgcware/bin:$PATH
-    export PATH
+LIBDIR="${BASEDIR}/lib"
+
+# --- Runtime linker: add LIBDIR to default search path ---
+if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
+    CURRENT=$(/usr/bin/crle 2>/dev/null | grep "Default Library Path" | sed 's/.*:[	 ]*//')
+    case "$CURRENT" in
+        *"${LIBDIR}"*) ;; # already registered
+        "")
+            /usr/bin/crle -l "/usr/lib:${LIBDIR}" 2>/dev/null && \
+                echo "Registered ${LIBDIR} with runtime linker" || true
+            ;;
+        *)
+            /usr/bin/crle -l "${CURRENT}:${LIBDIR}" 2>/dev/null && \
+                echo "Registered ${LIBDIR} with runtime linker" || true
+            ;;
+    esac
 fi
-if [ -d /usr/tgcware/lib ]; then
-    LD_LIBRARY_PATH=/usr/tgcware/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-    export LD_LIBRARY_PATH
+
+# --- Login profile: LD_LIBRARY_PATH + PATH ---
+PROFILE_DIR=/etc/profile.d
+if [ -d "$PROFILE_DIR" ] || mkdir -p "$PROFILE_DIR" 2>/dev/null; then
+    cat > "$PROFILE_DIR/sunstorm.sh" << 'PROFEOF'
+# Sunstorm distribution environment setup
+SST_ROOT=/opt/sst
+if [ -d "$SST_ROOT/gcc/bin" ]; then
+    PATH=$SST_ROOT/gcc/bin:$PATH
 fi
-EOF
-echo "Sunstorm: PATH configured in /etc/profile.d/sunstorm.sh"
-POSTEOF
+if [ -d "$SST_ROOT/bin" ]; then
+    PATH=$SST_ROOT/bin:$PATH
+fi
+if [ -d "$SST_ROOT/lib" ]; then
+    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+fi
+export PATH LD_LIBRARY_PATH
+PROFEOF
+fi
+LIBPOSTEOF
+
+# Postinstall for GCC compiler package
+POSTINSTALL_GCC=${TMPDIR}/postinstall-gcc
+cat > "${POSTINSTALL_GCC}" << 'GCCPOSTEOF'
+#!/bin/sh
+# Register library path (GCC depends on libgmp, libmpfr, libmpc in BASEDIR/lib)
+LIBDIR="${BASEDIR}/lib"
+if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
+    CURRENT=$(/usr/bin/crle 2>/dev/null | grep "Default Library Path" | sed 's/.*:[	 ]*//')
+    case "$CURRENT" in
+        *"${LIBDIR}"*) ;;
+        "") /usr/bin/crle -l "/usr/lib:${LIBDIR}" 2>/dev/null || true ;;
+        *)  /usr/bin/crle -l "${CURRENT}:${LIBDIR}" 2>/dev/null || true ;;
+    esac
+fi
+
+# Configure PATH and LD_LIBRARY_PATH in login profile
+PROFILE_DIR=/etc/profile.d
+if [ -d "$PROFILE_DIR" ] || mkdir -p "$PROFILE_DIR" 2>/dev/null; then
+    cat > "$PROFILE_DIR/sunstorm.sh" << 'PROFEOF'
+# Sunstorm distribution environment setup
+SST_ROOT=/opt/sst
+if [ -d "$SST_ROOT/gcc/bin" ]; then
+    PATH=$SST_ROOT/gcc/bin:$PATH
+fi
+if [ -d "$SST_ROOT/bin" ]; then
+    PATH=$SST_ROOT/bin:$PATH
+fi
+if [ -d "$SST_ROOT/lib" ]; then
+    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+fi
+export PATH LD_LIBRARY_PATH
+PROFEOF
+    echo "Sunstorm: PATH configured in $PROFILE_DIR/sunstorm.sh"
+    echo "Run '. $PROFILE_DIR/sunstorm.sh' or log in again to activate."
+fi
+GCCPOSTEOF
 
 # ============================================================
 # Build all packages
@@ -400,20 +655,23 @@ echo ""
 echo "Building SVR4 packages..."
 echo ""
 
-make_pkg "SSTgmp"    "gmp - GNU Multiple Precision Arithmetic"      "6.1.2" "GMP arbitrary precision arithmetic library"  "${LISTS}/gmp"            "${DEPS}/gmp"       ""
-make_pkg "SSTmpfr"   "mpfr - GNU Multiple Precision Floating-Point" "3.1.4" "MPFR multiple precision floating-point"       "${LISTS}/mpfr"           "${DEPS}/mpfr"      ""
-make_pkg "SSTmpc"    "mpc - GNU Multiple Precision Complex"         "1.0.3" "MPC multiple precision complex arithmetic"    "${LISTS}/mpc"            "${DEPS}/mpc"       ""
+make_pkg "SSTgmp"    "gmp - GNU Multiple Precision Arithmetic"      "6.1.2" "GMP arbitrary precision arithmetic library"  "${LISTS}/gmp"            "${DEPS}/gmp"       "${POSTINSTALL_LIB}"
+make_pkg "SSTmpfr"   "mpfr - GNU Multiple Precision Floating-Point" "3.1.4" "MPFR multiple precision floating-point"       "${LISTS}/mpfr"           "${DEPS}/mpfr"      "${POSTINSTALL_LIB}"
+make_pkg "SSTmpc"    "mpc - GNU Multiple Precision Complex"         "1.0.3" "MPC multiple precision complex arithmetic"    "${LISTS}/mpc"            "${DEPS}/mpc"       "${POSTINSTALL_LIB}"
 make_pkg "SSTbinut"  "binutils - GNU binary utilities"              "2.32"  "GNU assembler, linker, and binary utilities"  "${LISTS}/binutils"       "${DEPS}/binutils"  ""
-make_pkg "SSTlgcc1"  "libgcc - GCC runtime library"                "${GCC_VER}" "GCC runtime library (libgcc_s.so)"       "${LISTS}/libgcc"         "${DEPS}/libgcc"    ""
-make_pkg "SSTgcc49"  "gcc - GNU C Compiler 4.9.4"                  "${GCC_VER}" "GCC C compiler, preprocessor, coverage"  "${LISTS}/gcc"            "${DEPS}/gcc"       "${POSTINSTALL}"
-make_pkg "SSTlstdc"  "libstdc++ - C++ standard library"            "${GCC_VER}" "libstdc++.so.6 shared library"           "${LISTS}/libstdcxx"      "${DEPS}/libstdcxx" ""
+make_pkg "SSTlgcc"  "libgcc - GCC runtime library"                "${GCC_VER}" "GCC runtime library (libgcc_s.so)"       "${LISTS}/libgcc"         "${DEPS}/libgcc"    "${POSTINSTALL_LIB}"
+make_pkg "SSTgcc"  "gcc - GNU C Compiler"                        "${GCC_VER}" "GCC C compiler, preprocessor, coverage"  "${LISTS}/gcc"            "${DEPS}/gcc"       "${POSTINSTALL_GCC}"
+make_pkg "SSTlstdc"  "libstdc++ - C++ standard library"            "${GCC_VER}" "libstdc++.so.6 shared library"           "${LISTS}/libstdcxx"      "${DEPS}/libstdcxx" "${POSTINSTALL_LIB}"
 make_pkg "SSTlstdd"  "libstdc++-devel - C++ headers and static lib" "${GCC_VER}" "C++ standard library headers and archives" "${LISTS}/libstdcxx-devel" "${DEPS}/libstdcxx-devel" ""
-make_pkg "SSTg49cx"  "gcc-c++ - GCC C++ compiler"                  "${GCC_VER}" "GCC C++ compiler (g++)"                  "${LISTS}/gcc-cxx"        "${DEPS}/gcc-cxx"   ""
-make_pkg "SSTlgfrt"  "libgfortran - Fortran runtime"               "${GCC_VER}" "GCC Fortran runtime library"             "${LISTS}/libgfortran"    "${DEPS}/libgfortran" ""
-make_pkg "SSTg49cf"  "gcc-fortran - GCC Fortran compiler"          "${GCC_VER}" "GCC Fortran compiler (gfortran)"         "${LISTS}/gcc-fortran"    "${DEPS}/gcc-fortran" ""
-make_pkg "SSTlobjc"  "libobjc - Objective-C runtime"               "${GCC_VER}" "GCC Objective-C runtime library"         "${LISTS}/libobjc"        "${DEPS}/libobjc"   ""
-make_pkg "SSTg49co"  "gcc-objc - GCC Objective-C compiler"         "${GCC_VER}" "GCC Objective-C/C++ compiler"            "${LISTS}/gcc-objc"       "${DEPS}/gcc-objc"  ""
-make_pkg "SSTlgomp"  "libgomp - OpenMP runtime"                    "${GCC_VER}" "GCC OpenMP parallel runtime library"     "${LISTS}/libgomp"        "${DEPS}/libgomp"   ""
+make_pkg "SSTgcxx"  "gcc-c++ - GCC C++ compiler"                  "${GCC_VER}" "GCC C++ compiler (g++)"                  "${LISTS}/gcc-cxx"        "${DEPS}/gcc-cxx"   ""
+make_pkg "SSTlgfrt"  "libgfortran - Fortran runtime"               "${GCC_VER}" "GCC Fortran runtime library"             "${LISTS}/libgfortran"    "${DEPS}/libgfortran" "${POSTINSTALL_LIB}"
+make_pkg "SSTgftn"  "gcc-fortran - GCC Fortran compiler"          "${GCC_VER}" "GCC Fortran compiler (gfortran)"         "${LISTS}/gcc-fortran"    "${DEPS}/gcc-fortran" ""
+make_pkg "SSTlobjc"  "libobjc - Objective-C runtime"               "${GCC_VER}" "GCC Objective-C runtime library"         "${LISTS}/libobjc"        "${DEPS}/libobjc"   "${POSTINSTALL_LIB}"
+make_pkg "SSTgobjc"  "gcc-objc - GCC Objective-C compiler"         "${GCC_VER}" "GCC Objective-C/C++ compiler"            "${LISTS}/gcc-objc"       "${DEPS}/gcc-objc"  ""
+make_pkg "SSTlgomp"  "libgomp - OpenMP runtime"                    "${GCC_VER}" "GCC OpenMP parallel runtime library"     "${LISTS}/libgomp"        "${DEPS}/libgomp"   "${POSTINSTALL_LIB}"
+
+# --- SSTlink: symlinks in /opt/sunstorm/bin ---
+make_links_pkg
 
 # ============================================================
 # Summary
@@ -439,12 +697,13 @@ echo "  Total: ${_total} packages"
 echo "  Output: ${OUTPUT}/"
 echo ""
 echo "Install order (respecting dependencies):"
-echo "  1. SSTgmp SSTbinut SSTlgcc1"
+echo "  1. SSTgmp SSTbinut SSTlgcc"
 echo "  2. SSTmpfr"
 echo "  3. SSTmpc"
-echo "  4. SSTgcc49 SSTlstdc SSTlgfrt SSTlobjc SSTlgomp"
+echo "  4. SSTgcc SSTlstdc SSTlgfrt SSTlobjc SSTlgomp"
 echo "  5. SSTlstdd"
-echo "  6. SSTg49cx SSTg49cf SSTg49co"
+echo "  6. SSTgcxx SSTgftn SSTgobjc"
+echo "  7. SSTlink  (symlinks in /opt/sunstorm/bin + PATH setup)"
 
 # Cleanup
 rm -rf "${TMPDIR}"

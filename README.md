@@ -20,7 +20,7 @@ All Sunstorm packages install to:
 Versioned compilers install to sub-prefixes:
 
 ```
-/opt/sunstorm/gcc49    — GCC 4.9.4
+/opt/sunstorm/gcc    — GCC
 ```
 
 ## Package Naming
@@ -33,11 +33,11 @@ SVR4 package names use the `SST` prefix:
 | mpfr | `SSTmpfr` | MPFR 3.1.4 floating-point library |
 | mpc | `SSTmpc` | MPC 1.0.3 complex arithmetic |
 | binutils | `SSTbinut` | GNU binutils 2.32 |
-| gcc | `SSTgcc49` | GCC 4.9.4 C compiler |
-| gcc-c++ | `SSTg49cx` | GCC 4.9.4 C++ compiler |
-| gcc-fortran | `SSTg49cf` | GCC 4.9.4 Fortran compiler |
-| gcc-objc | `SSTg49co` | GCC 4.9.4 Objective-C/C++ |
-| libgcc | `SSTlgcc1` | libgcc_s.so runtime |
+| gcc | `SSTgcc` | GCC C compiler |
+| gcc-c++ | `SSTgcxx` | GCC C++ compiler |
+| gcc-fortran | `SSTgftn` | GCC Fortran compiler |
+| gcc-objc | `SSTgobjc` | GCC Objective-C/C++ |
+| libgcc | `SSTlgcc` | libgcc_s.so runtime |
 | libstdc++ | `SSTlstdc` | libstdc++.so.6 runtime |
 | libstdc++-devel | `SSTlstdd` | libstdc++ headers + static lib |
 | libgfortran | `SSTlgfrt` | Fortran runtime library |
@@ -70,10 +70,10 @@ Packages are distributed as gzipped SVR4 datastreams. Install with
 
 ```sh
 # Via solpkg (auto-resolves dependencies):
-solpkg install gcc49
+solpkg install gcc
 
 # Manual install:
-gunzip < SSTgcc49-4.9.4-1.sst-sunos5.7-sparc.pkg.gz | pkgadd -n -d /dev/stdin all
+gunzip < SSTgcc-4.9.4-1.sst-sunos5.7-sparc.pkg.gz | pkgadd -n -d /dev/stdin all
 ```
 
 ## Repository
@@ -86,29 +86,29 @@ Pre-built packages are published as GitHub releases in the
 ```
 SSTgmp    (standalone — GMP 6.1.2)
 SSTbinut  (standalone — GNU binutils 2.32)
-SSTlgcc1  (standalone — libgcc_s.so.1)
+SSTlgcc  (standalone — libgcc_s.so.1)
   ↓
 SSTmpfr   ← SSTgmp
   ↓
 SSTmpc    ← SSTgmp, SSTmpfr
   ↓
-SSTgcc49  ← SSTbinut, SSTlgcc1, SSTgmp, SSTmpfr, SSTmpc
+SSTgcc  ← SSTbinut, SSTlgcc, SSTgmp, SSTmpfr, SSTmpc
   ↓
-SSTlstdc  ← SSTlgcc1
+SSTlstdc  ← SSTlgcc
   ↓
 SSTlstdd  ← SSTlstdc
   ↓
-SSTg49cx  ← SSTgcc49, SSTlstdc, SSTlstdd
+SSTgcxx  ← SSTgcc, SSTlstdc, SSTlstdd
   ↓
-SSTlgfrt  ← SSTlgcc1
+SSTlgfrt  ← SSTlgcc
   ↓
-SSTg49cf  ← SSTgcc49, SSTlgcc1, SSTlgfrt
+SSTgftn  ← SSTgcc, SSTlgcc, SSTlgfrt
   ↓
-SSTlobjc  ← SSTlgcc1
+SSTlobjc  ← SSTlgcc
   ↓
-SSTg49co  ← SSTgcc49, SSTlgcc1, SSTlobjc
+SSTgobjc  ← SSTgcc, SSTlgcc, SSTlobjc
   ↓
-SSTlgomp  ← SSTlgcc1
+SSTlgomp  ← SSTlgcc
 
 SSTslpkg  (standalone — solpkg)
 SSTpzfol  (standalone — pizzafool)

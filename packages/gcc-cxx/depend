@@ -1,3 +1,3 @@
-P SSTgcc49  GCC 4.9.4 C compiler
+P SSTgcc  GCC C compiler
 P SSTlstdc  C++ runtime library
 P SSTlstdd  C++ headers and static library

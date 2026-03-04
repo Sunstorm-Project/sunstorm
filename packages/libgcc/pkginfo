@@ -1,4 +1,4 @@
-PKG="SSTlgcc1"
+PKG="SSTlgcc"
 NAME="libgcc - GCC runtime library"
 ARCH="sparc"
 VERSION="4.9.4,REV=1"

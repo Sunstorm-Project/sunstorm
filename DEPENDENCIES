@@ -4,21 +4,24 @@
 
 # === Foundation (no dependencies) ===
 SSTbinut
-SSTlgcc1
+SSTlgcc
 SSTgmp
 SSTmpfr   SSTgmp
 SSTmpc    SSTgmp SSTmpfr
 
 # === GCC Toolchain ===
-SSTgcc49  SSTbinut SSTlgcc1 SSTgmp SSTmpfr SSTmpc
-SSTlstdc  SSTlgcc1
+SSTgcc    SSTbinut SSTlgcc SSTgmp SSTmpfr SSTmpc
+SSTlstdc  SSTlgcc
 SSTlstdd  SSTlstdc
-SSTg49cx  SSTgcc49 SSTlstdc SSTlstdd
-SSTlgfrt  SSTlgcc1
-SSTg49cf  SSTgcc49 SSTlgcc1 SSTlgfrt
-SSTlobjc  SSTlgcc1
-SSTg49co  SSTgcc49 SSTlgcc1 SSTlobjc
-SSTlgomp  SSTlgcc1
+SSTgcxx   SSTgcc SSTlstdc SSTlstdd
+SSTlgfrt  SSTlgcc
+SSTgftn   SSTgcc SSTlgcc SSTlgfrt
+SSTlobjc  SSTlgcc
+SSTgobjc  SSTgcc SSTlgcc SSTlobjc
+SSTlgomp  SSTlgcc
+
+# === Integration ===
+SSTlink   SSTbinut SSTgcc
 
 # === Applications (standalone) ===
 SSTslpkg

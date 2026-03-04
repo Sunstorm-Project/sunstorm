@@ -1,0 +1,28 @@
+#!/bin/sh
+# postinstall for SSTlink
+# Configure PATH and LD_LIBRARY_PATH for Sunstorm distribution.
+
+PROFILE_DIR=/etc/profile.d
+
+if [ -d "${PROFILE_DIR}" ] || mkdir -p "${PROFILE_DIR}" 2>/dev/null; then
+    cat > "${PROFILE_DIR}/sunstorm.sh" << 'PROFEOF'
+# Sunstorm distribution environment setup
+SST_ROOT=/opt/sst
+if [ -d "$SST_ROOT/gcc/bin" ]; then
+    PATH=$SST_ROOT/gcc/bin:$PATH
+fi
+if [ -d "$SST_ROOT/bin" ]; then
+    PATH=$SST_ROOT/bin:$PATH
+fi
+if [ -d "$SST_ROOT/lib" ]; then
+    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+fi
+export PATH LD_LIBRARY_PATH
+PROFEOF
+    echo "Sunstorm: PATH configured in ${PROFILE_DIR}/sunstorm.sh"
+    echo "Sunstorm: Run '. ${PROFILE_DIR}/sunstorm.sh' or log in again to activate."
+else
+    echo ""
+    echo "Sunstorm: Add /opt/sst/bin and /opt/sst/gcc/bin to your PATH manually."
+    echo ""
+fi

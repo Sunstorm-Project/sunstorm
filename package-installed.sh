@@ -152,8 +152,8 @@ EOF
     fi
 
     gzip -9f "${_pkgfile}"
-    _size=$(ls -lh "${_pkgfile}.gz" | awk '{print $5}')
-    echo "  ${_realcount} objects -> ${_code}-${_ver}-${PKG_ARCH}.pkg.gz (${_size})"
+    _size=$(ls -l "${_pkgfile}.gz" | awk '{print $5}')
+    echo "  ${_realcount} objects -> ${_code}-${_ver}-${PKG_ARCH}.pkg.gz (${_size} bytes)"
     echo ""
 }
 
@@ -281,11 +281,9 @@ mkdir -p "${LISTS}"
 
 # --- SSTlgfrt: libgfortran ---
 {
-    for f in lib/libgfortran.so lib/libgfortran.so.3 lib/libgfortran.so.3.0.0 \
-             lib/libgfortran.a; do
-        [ -e "${PREFIX}/${f}" ] && echo "$f"
-    done
-} > "${LISTS}/libgfortran"
+    find "${PREFIX}/lib" -name 'libgfortran.*' \( -type f -o -type l \) 2>/dev/null | \
+        sed "s|^${PREFIX}/||"
+} | grep -v '/gcc/' | sort -u > "${LISTS}/libgfortran"
 
 # --- SSTgftn: GCC Fortran compiler ---
 {
@@ -299,10 +297,9 @@ mkdir -p "${LISTS}"
 
 # --- SSTlobjc: libobjc ---
 {
-    for f in lib/libobjc.so lib/libobjc.so.4 lib/libobjc.so.4.0.0 lib/libobjc.a; do
-        [ -e "${PREFIX}/${f}" ] && echo "$f"
-    done
-} > "${LISTS}/libobjc"
+    find "${PREFIX}/lib" -name 'libobjc.*' \( -type f -o -type l \) 2>/dev/null | \
+        sed "s|^${PREFIX}/||"
+} | grep -v '/gcc/' | sort -u > "${LISTS}/libobjc"
 
 # --- SSTgobjc: GCC Objective-C ---
 {
@@ -314,13 +311,11 @@ mkdir -p "${LISTS}"
 
 # --- SSTlgomp: libgomp + libitm + libssp + libatomic ---
 {
-    for f in lib/libgomp.so lib/libgomp.so.1 lib/libgomp.so.1.0.0 lib/libgomp.a \
-             lib/libitm.so lib/libitm.so.1 lib/libitm.so.1.0.0 \
-             lib/libssp.so lib/libssp.so.0 lib/libssp.so.0.0.0 \
-             lib/libsparcatomic.so lib/libsparcatomic.so.1 lib/libsparcatomic.so.1.3.0; do
-        [ -e "${PREFIX}/${f}" ] && echo "$f"
+    for _pat in 'libgomp.*' 'libitm.*' 'libssp.*' 'libsparcatomic.*' 'libatomic.*'; do
+        find "${PREFIX}/lib" -name "${_pat}" \( -type f -o -type l \) 2>/dev/null | \
+            sed "s|^${PREFIX}/||"
     done
-} > "${LISTS}/libgomp"
+} | grep -v '/gcc/' | sort -u > "${LISTS}/libgomp"
 
 # ============================================================
 # Build all packages

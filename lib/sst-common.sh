@@ -8,7 +8,7 @@ SST_PREFIX="SST"
 SST_VERSION="1.0"
 
 # Install prefix on Solaris target
-SST_BASEDIR="/opt/sunstorm"
+SST_BASEDIR="/opt/sst"
 
 # Target triplet
 SST_TARGET="sparc-sun-solaris2.7"

@@ -20,9 +20,6 @@ SSTlobjc  SSTlgcc
 SSTgobjc  SSTgcc SSTlgcc SSTlobjc
 SSTlgomp  SSTlgcc
 
-# === Integration ===
-SSTlink   SSTbinut SSTgcc
-
 # === Applications (standalone) ===
 SSTslpkg
 SSTpzfol

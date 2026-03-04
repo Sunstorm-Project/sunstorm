@@ -17,7 +17,7 @@ SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 
 . "${SCRIPTDIR}/lib/sst-common.sh"
 
-PREFIX="/opt/sunstorm"
+PREFIX="/opt/sst"
 GCC_SUBDIR="gcc"
 GCC_DIR="${PREFIX}/${GCC_SUBDIR}"
 GCC_VER="4.9.4"

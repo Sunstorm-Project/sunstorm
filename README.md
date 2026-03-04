@@ -29,6 +29,9 @@ SVR4 package names use the `SST` prefix:
 
 | Package | SVR4 Code | Description |
 |---------|-----------|-------------|
+| gmp | `SSTgmp` | GMP 6.1.2 arithmetic library |
+| mpfr | `SSTmpfr` | MPFR 3.1.4 floating-point library |
+| mpc | `SSTmpc` | MPC 1.0.3 complex arithmetic |
 | binutils | `SSTbinut` | GNU binutils 2.32 |
 | gcc | `SSTgcc49` | GCC 4.9.4 C compiler |
 | gcc-c++ | `SSTg49cx` | GCC 4.9.4 C++ compiler |
@@ -37,6 +40,8 @@ SVR4 package names use the `SST` prefix:
 | libgcc | `SSTlgcc1` | libgcc_s.so runtime |
 | libstdc++ | `SSTlstdc` | libstdc++.so.6 runtime |
 | libstdc++-devel | `SSTlstdd` | libstdc++ headers + static lib |
+| libgfortran | `SSTlgfrt` | Fortran runtime library |
+| libobjc | `SSTlobjc` | Objective-C runtime library |
 | libgomp | `SSTlgomp` | OpenMP runtime |
 | solpkg | `SSTslpkg` | Solaris SPARC package manager |
 | pizzafool | `SSTpzfol` | Motif/CDE pizza ordering app |
@@ -79,22 +84,30 @@ Pre-built packages are published as GitHub releases in the
 ## Dependency Map
 
 ```
+SSTgmp    (standalone — GMP 6.1.2)
 SSTbinut  (standalone — GNU binutils 2.32)
-  ↑
 SSTlgcc1  (standalone — libgcc_s.so.1)
-  ↑
-SSTgcc49  ← SSTbinut, SSTlgcc1
-  ↑
+  ↓
+SSTmpfr   ← SSTgmp
+  ↓
+SSTmpc    ← SSTgmp, SSTmpfr
+  ↓
+SSTgcc49  ← SSTbinut, SSTlgcc1, SSTgmp, SSTmpfr, SSTmpc
+  ↓
 SSTlstdc  ← SSTlgcc1
-  ↑
+  ↓
 SSTlstdd  ← SSTlstdc
-  ↑
+  ↓
 SSTg49cx  ← SSTgcc49, SSTlstdc, SSTlstdd
-  ↑
-SSTg49cf  ← SSTgcc49, SSTlgcc1
-  ↑
-SSTg49co  ← SSTgcc49, SSTlgcc1
-  ↑
+  ↓
+SSTlgfrt  ← SSTlgcc1
+  ↓
+SSTg49cf  ← SSTgcc49, SSTlgcc1, SSTlgfrt
+  ↓
+SSTlobjc  ← SSTlgcc1
+  ↓
+SSTg49co  ← SSTgcc49, SSTlgcc1, SSTlobjc
+  ↓
 SSTlgomp  ← SSTlgcc1
 
 SSTslpkg  (standalone — solpkg)

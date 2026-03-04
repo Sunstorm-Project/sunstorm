@@ -83,6 +83,33 @@ rm -rf "${OUTPUT}"
 mkdir -p "${OUTPUT}"
 
 # ============================================================
+# SSTgmp — GMP
+# ============================================================
+echo "--- SSTgmp: GMP 6.1.2 ---"
+pkg_meta gmp
+pkg_copy gmp \
+    lib/libgmp.so lib/libgmp.so.10 lib/libgmp.so.10.3.2 lib/libgmp.a \
+    include/gmp.h include/gmpxx.h
+
+# ============================================================
+# SSTmpfr — MPFR
+# ============================================================
+echo "--- SSTmpfr: MPFR 3.1.4 ---"
+pkg_meta mpfr
+pkg_copy mpfr \
+    lib/libmpfr.so lib/libmpfr.so.4 lib/libmpfr.so.4.1.4 lib/libmpfr.a \
+    include/mpfr.h include/mpf2mpfr.h
+
+# ============================================================
+# SSTmpc — MPC
+# ============================================================
+echo "--- SSTmpc: MPC 1.0.3 ---"
+pkg_meta mpc
+pkg_copy mpc \
+    lib/libmpc.so lib/libmpc.so.3 lib/libmpc.so.3.0.0 lib/libmpc.a \
+    include/mpc.h
+
+# ============================================================
 # SSTbinut — GNU binutils 2.32
 # ============================================================
 echo "--- SSTbinut: GNU binutils 2.32 ---"
@@ -182,6 +209,22 @@ echo "--- SSTlgomp: OpenMP runtime ---"
 pkg_meta libgomp
 pkg_copy libgomp \
     lib/libgomp.so lib/libgomp.so.1 lib/libgomp.so.1.0.0
+
+# ============================================================
+# SSTlgfrt — libgfortran runtime
+# ============================================================
+echo "--- SSTlgfrt: libgfortran runtime ---"
+pkg_meta libgfortran
+pkg_copy libgfortran \
+    lib/libgfortran.so lib/libgfortran.so.3 lib/libgfortran.so.3.0.0 lib/libgfortran.a
+
+# ============================================================
+# SSTlobjc — libobjc runtime
+# ============================================================
+echo "--- SSTlobjc: libobjc runtime ---"
+pkg_meta libobjc
+pkg_copy libobjc \
+    lib/libobjc.so lib/libobjc.so.4 lib/libobjc.so.4.0.0 lib/libobjc.a
 
 # ============================================================
 # Summary

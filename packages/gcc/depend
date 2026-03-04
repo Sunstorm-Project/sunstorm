@@ -1,2 +1,5 @@
 P SSTbinut  GNU binary utilities (assembler, linker)
 P SSTlgcc1  GCC runtime library
+P SSTgmp    GNU Multiple Precision Arithmetic Library
+P SSTmpfr   GNU Multiple Precision Floating-Point Reliably
+P SSTmpc    GNU Multiple Precision Complex Library

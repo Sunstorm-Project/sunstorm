@@ -1,5 +1,6 @@
-P SSTbinut  GNU binary utilities (assembler, linker)
-P SSTlgcc  GCC runtime library
-P SSTgmp    GNU Multiple Precision Arithmetic Library
-P SSTmpfr   GNU Multiple Precision Floating-Point Reliable
-P SSTmpc    GNU Multiple Precision Complex Library
+# No dependencies — GCC 11.4.0 is fully self-contained.
+# All support libraries (GMP, MPFR, MPC, ISL) are statically linked.
+# GNU binutils 2.32 (as, ld) are included in the package.
+# Only requires base Solaris 7 system libraries.
+P SUNWcsr    Core Solaris (root)
+P SUNWcsu    Core Solaris (usr)

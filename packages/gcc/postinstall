@@ -1,43 +1,124 @@
 #!/bin/sh
-# postinstall for SSTgcc
-# Register library path (GCC depends on libgmp, libmpfr, libmpc in BASEDIR/lib)
-# and configure PATH + LD_LIBRARY_PATH in the login profile.
+# postinstall for SSTgcc — GCC 11.4.0 standalone toolchain
+#
+# Sets up a complete sysroot so GCC works out of the box:
+#   - CRT startup objects in /usr/lib
+#   - libgcc symlinks in /usr/lib
+#   - values-*.o for C standard conformance modes
+#   - Convenience symlinks (cc, c++)
+#   - PATH + MANPATH in /etc/profile.d
+#   - Runtime linker configuration via crle
+#
+# NOTE: This script must be compatible with Solaris 7 /bin/sh (Bourne shell).
+#       Do NOT use $(cmd), ${var%%pat}, ${var#pat}, or other POSIX extensions.
 
-LIBDIR="${BASEDIR}/lib"
+SSTDIR="${BASEDIR}"
+GCCLIB="${SSTDIR}/lib/gcc/sparc-sun-solaris2.7/11.4.0"
+SYSROOTDIR="${SSTDIR}/lib/sysroot"
 
-# --- Runtime linker: add LIBDIR to default search path ---
-if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
-    CURRENT=$(/usr/bin/crle 2>/dev/null | grep "Default Library Path" | sed 's/.*:[	 ]*//')
-    case "$CURRENT" in
+echo "SSTgcc postinstall: configuring GCC ..."
+
+# --- CRT startup objects: copy into /usr/lib ---
+# The linker needs crt1.o, crti.o, crtn.o in the default search path.
+# We copy (not symlink) because these are needed very early in linking.
+for f in crt1.o crti.o crtn.o; do
+    if [ -f "${GCCLIB}/${f}" ]; then
+        if [ ! -f "/usr/lib/${f}" ]; then
+            cp "${GCCLIB}/${f}" "/usr/lib/${f}" && \
+                echo "  Installed /usr/lib/${f}" || true
+        else
+            echo "  /usr/lib/${f} already exists (system-provided)"
+        fi
+    fi
+done
+
+# --- libgcc archive symlinks in /usr/lib ---
+for f in libgcc.a libgcc_eh.a; do
+    if [ -f "${GCCLIB}/${f}" ]; then
+        rm -f "/usr/lib/${f}" 2>/dev/null
+        ln -s "${GCCLIB}/${f}" "/usr/lib/${f}" && \
+            echo "  Symlinked /usr/lib/${f}" || true
+    fi
+done
+
+# --- values-*.o: C conformance mode startup objects ---
+# GCC's startfile_arch spec references these for -std= modes.
+# Solaris 7 ships values-Xa.o, values-Xc.o, values-xpg4.o in SUNWarc
+# but NOT values-xpg6.o (needed for -std=c99/c11/c17/gnu11 etc.)
+if [ -d "${SYSROOTDIR}" ]; then
+    for f in values-Xa.o values-Xc.o values-xpg4.o values-xpg6.o; do
+        if [ -f "${SYSROOTDIR}/${f}" ] && [ ! -f "/usr/lib/${f}" ]; then
+            cp "${SYSROOTDIR}/${f}" "/usr/lib/${f}" && \
+                echo "  Installed /usr/lib/${f}" || true
+        fi
+    done
+fi
+
+# --- Convenience symlinks: cc -> gcc, c++ -> g++ ---
+if [ -f "${SSTDIR}/bin/gcc" ]; then
+    if [ ! -f "${SSTDIR}/bin/cc" ] && [ ! -h "${SSTDIR}/bin/cc" ]; then
+        ln -s gcc "${SSTDIR}/bin/cc" && \
+            echo "  Created symlink ${SSTDIR}/bin/cc -> gcc" || true
+    fi
+fi
+if [ -f "${SSTDIR}/bin/g++" ]; then
+    if [ ! -f "${SSTDIR}/bin/c++" ] && [ ! -h "${SSTDIR}/bin/c++" ]; then
+        ln -s g++ "${SSTDIR}/bin/c++" && \
+            echo "  Created symlink ${SSTDIR}/bin/c++ -> g++" || true
+    fi
+fi
+
+# --- Runtime linker: register /opt/sst/lib if crle is available ---
+LIBDIR="${SSTDIR}/lib"
+if [ -x /usr/bin/crle ] && [ -d "${LIBDIR}" ]; then
+    CURRENT=`/usr/bin/crle 2>/dev/null | grep "Default Library Path" | \
+        sed 's/.*:[	 ]*//'`
+    case "${CURRENT}" in
         *"${LIBDIR}"*) ;; # already registered
         "")
             /usr/bin/crle -l "/usr/lib:${LIBDIR}" 2>/dev/null && \
-                echo "Registered ${LIBDIR} with runtime linker" || true
+                echo "  Registered ${LIBDIR} with runtime linker" || true
             ;;
         *)
             /usr/bin/crle -l "${CURRENT}:${LIBDIR}" 2>/dev/null && \
-                echo "Registered ${LIBDIR} with runtime linker" || true
+                echo "  Registered ${LIBDIR} with runtime linker" || true
             ;;
     esac
 fi
 
-# --- Login profile: PATH + LD_LIBRARY_PATH ---
-PROFILE_DIR=/etc/profile.d
-if [ -d "$PROFILE_DIR" ] || mkdir -p "$PROFILE_DIR" 2>/dev/null; then
-    cat > "$PROFILE_DIR/sunstorm.sh" << 'PROFEOF'
-# Sunstorm distribution environment setup
-SST_ROOT=/opt/sst
-if [ -d "$SST_ROOT/gcc/bin" ]; then
-    PATH=$SST_ROOT/gcc/bin:$PATH
+# --- PATH + MANPATH setup ---
+PROFDIR="/etc/profile.d"
+if [ -d "${PROFDIR}" ] || mkdir -p "${PROFDIR}" 2>/dev/null; then
+    cat > "${PROFDIR}/sunstorm-gcc11.sh" << PROFILE
+# Sunstorm GCC 11.4.0 toolchain — installed by SSTgcc package
+SST_HOME=${SSTDIR}
+if [ -d "\${SST_HOME}/bin" ]; then
+    case "\$PATH" in
+        *"\${SST_HOME}/bin"*) ;;
+        *) PATH="\${SST_HOME}/bin:\${PATH}"; export PATH ;;
+    esac
 fi
-if [ -d "$SST_ROOT/bin" ]; then
-    PATH=$SST_ROOT/bin:$PATH
+if [ -d "\${SST_HOME}/share/man" ]; then
+    MANPATH="\${SST_HOME}/share/man:\${MANPATH}"; export MANPATH
 fi
-if [ -d "$SST_ROOT/lib" ]; then
-    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+PROFILE
+    echo "  Created ${PROFDIR}/sunstorm-gcc11.sh"
 fi
-export PATH LD_LIBRARY_PATH
-PROFEOF
-    echo "Sunstorm: PATH configured in $PROFILE_DIR/sunstorm.sh"
-    echo "Run '. $PROFILE_DIR/sunstorm.sh' or log in again to activate."
+
+# --- /etc/default/login: note for admin ---
+LOGINDEF="/etc/default/login"
+if [ -f "${LOGINDEF}" ]; then
+    _pathline=`grep '^PATH=' ${LOGINDEF} 2>/dev/null`
+    case "${_pathline}" in
+        *"${SSTDIR}/bin"*) ;; # already there
+        *)
+            echo "  NOTE: Add ${SSTDIR}/bin to PATH in ${LOGINDEF} for non-login shells"
+            ;;
+    esac
 fi
+
+echo ""
+echo "SSTgcc postinstall: GCC is ready."
+echo "  Compiler: ${SSTDIR}/bin/gcc"
+echo "  C++:      ${SSTDIR}/bin/g++"
+echo "  Run:      . ${PROFDIR}/sunstorm-gcc11.sh  (or re-login)"

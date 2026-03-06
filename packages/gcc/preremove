@@ -1,0 +1,70 @@
+#!/bin/sh
+# preremove for SSTgcc — Clean up files installed outside BASEDIR
+#
+# NOTE: This script must be compatible with Solaris 7 /bin/sh (Bourne shell).
+#       Do NOT use $(cmd), ${var%%pat}, ${var#pat}, or other POSIX extensions.
+
+echo "SSTgcc preremove: cleaning up ..."
+
+SSTDIR="${BASEDIR}"
+GCCLIB="${SSTDIR}/lib/gcc/sparc-sun-solaris2.7/11.4.0"
+SYSROOTDIR="${SSTDIR}/lib/sysroot"
+
+# Remove /usr/lib symlinks (only if they point to our tree)
+for f in libgcc.a libgcc_eh.a; do
+    if [ -h "/usr/lib/${f}" ]; then
+        _target=`ls -l "/usr/lib/${f}" 2>/dev/null | sed 's/.*-> //'`
+        case "${_target}" in
+            *"/opt/sst/"*)
+                rm -f "/usr/lib/${f}" && echo "  Removed /usr/lib/${f}" || true
+                ;;
+        esac
+    fi
+done
+
+# Remove CRT files from /usr/lib if they match our versions
+for f in crt1.o crti.o crtn.o; do
+    if [ -f "/usr/lib/${f}" ] && [ -f "${GCCLIB}/${f}" ]; then
+        if cmp -s "/usr/lib/${f}" "${GCCLIB}/${f}" 2>/dev/null; then
+            rm -f "/usr/lib/${f}" && echo "  Removed /usr/lib/${f}" || true
+        fi
+    fi
+done
+
+# Remove values-*.o from /usr/lib if they match our versions
+if [ -d "${SYSROOTDIR}" ]; then
+    for f in values-Xa.o values-Xc.o values-xpg4.o values-xpg6.o; do
+        if [ -f "/usr/lib/${f}" ] && [ -f "${SYSROOTDIR}/${f}" ]; then
+            if cmp -s "/usr/lib/${f}" "${SYSROOTDIR}/${f}" 2>/dev/null; then
+                rm -f "/usr/lib/${f}" && echo "  Removed /usr/lib/${f}" || true
+            fi
+        fi
+    done
+fi
+
+# Remove convenience symlinks
+for f in cc c++; do
+    if [ -h "${SSTDIR}/bin/${f}" ]; then
+        rm -f "${SSTDIR}/bin/${f}" && echo "  Removed ${SSTDIR}/bin/${f}" || true
+    fi
+done
+
+# Remove runtime linker registration
+if [ -x /usr/bin/crle ]; then
+    LIBDIR="${SSTDIR}/lib"
+    CURRENT=`/usr/bin/crle 2>/dev/null | grep "Default Library Path" | \
+        sed 's/.*:[	 ]*//'`
+    case "${CURRENT}" in
+        *"${LIBDIR}"*)
+            NEW=`echo "${CURRENT}" | sed "s|:${LIBDIR}||;s|${LIBDIR}:||;s|${LIBDIR}||"`
+            [ -n "${NEW}" ] && /usr/bin/crle -l "${NEW}" 2>/dev/null && \
+                echo "  Unregistered ${LIBDIR} from runtime linker" || true
+            ;;
+    esac
+fi
+
+# Remove profile.d entry
+rm -f /etc/profile.d/sunstorm-gcc11.sh 2>/dev/null && \
+    echo "  Removed /etc/profile.d/sunstorm-gcc11.sh" || true
+
+echo "SSTgcc preremove: done."

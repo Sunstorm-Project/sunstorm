@@ -1,0 +1,34 @@
+#!/bin/sh
+# postinstall for SSTlsolc — libsolcompat shared runtime
+#
+# Registers /opt/sst/lib with the runtime linker so that dynamically-linked
+# userland packages find libsolcompat.so.1 at load time.
+#
+# NOTE: Must be compatible with Solaris 7 /bin/sh (Bourne shell).
+
+LIBDIR="${BASEDIR}/lib"
+
+# --- Shared library symlink ---
+if [ -f "${LIBDIR}/libsolcompat.so.1" ] && [ ! -h "${LIBDIR}/libsolcompat.so" ]; then
+    ln -s libsolcompat.so.1 "${LIBDIR}/libsolcompat.so" && \
+        echo "  Created symlink libsolcompat.so -> libsolcompat.so.1" || true
+fi
+
+# --- Runtime linker: add LIBDIR to default search path ---
+if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
+    CURRENT=`/usr/bin/crle 2>/dev/null | grep "Default Library Path" | \
+        sed 's/.*:[	 ]*//'`
+    case "$CURRENT" in
+        *"${LIBDIR}"*) ;; # already registered
+        "")
+            /usr/bin/crle -l "/usr/lib:${LIBDIR}" 2>/dev/null && \
+                echo "  Registered ${LIBDIR} with runtime linker" || true
+            ;;
+        *)
+            /usr/bin/crle -l "${CURRENT}:${LIBDIR}" 2>/dev/null && \
+                echo "  Registered ${LIBDIR} with runtime linker" || true
+            ;;
+    esac
+fi
+
+echo "SSTlsolc postinstall: libsolcompat.so.1 ready."

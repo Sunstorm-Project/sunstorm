@@ -2,39 +2,42 @@
 # postinstall for SSTgmp
 # Register library directory with the Solaris runtime linker (crle)
 # and ensure LD_LIBRARY_PATH is set in the login profile.
+#
+# NOTE: Must be compatible with Solaris 7 /bin/sh (Bourne shell).
 
 LIBDIR="${BASEDIR}/lib"
 
 # --- Runtime linker: add LIBDIR to default search path ---
 if [ -x /usr/bin/crle ] && [ -d "$LIBDIR" ]; then
-    CURRENT=$(/usr/bin/crle 2>/dev/null | grep "Default Library Path" | sed 's/.*:[	 ]*//')
+    CURRENT=`/usr/bin/crle 2>/dev/null | grep "Default Library Path" | \
+        sed 's/.*:[ ]*//'`
     case "$CURRENT" in
         *"${LIBDIR}"*) ;; # already registered
         "")
             /usr/bin/crle -l "/usr/lib:${LIBDIR}" 2>/dev/null && \
-                echo "Registered ${LIBDIR} with runtime linker" || true
-            ;;
-        *)
-            /usr/bin/crle -l "${CURRENT}:${LIBDIR}" 2>/dev/null && \
-                echo "Registered ${LIBDIR} with runtime linker" || true
+                echo "  Registe                echo "  Registe                echo "  Registe    *)                echo "  Registe                echo "  Registe                echo "  echo "  Registered ${LIBDIR} with runtime linker" || true
             ;;
     esac
 fi
 
-# --- Login profile: LD_LIBRARY_PATH + PATH ---
+# --- Login profile: PATH + LD_LIBRARY_PATH ---
 PROFILE_DIR=/etc/profile.d
 if [ -d "$PROFILE_DIR" ] || mkdir -p "$PROFILE_DIR" 2>/dev/null; then
     cat > "$PROFILE_DIR/sunstorm.sh" << 'PROFEOF'
 # Sunstorm distribution environment setup
 SST_ROOT=/opt/sst
-if [ -d "$SST_ROOT/gcc/bin" ]; then
-    PATH=$SST_ROOT/gcc/bin:$PATH
-fi
 if [ -d "$SST_ROOT/bin" ]; then
-    PATH=$SST_ROOT/bin:$PATH
+    case "$PATH" in
+        *"$SST_ROOT/bin"*) ;;
+        *) PATH="$SST_ROOT/bin:$PATH" ;;
+    esac
 fi
 if [ -d "$SST_ROOT/lib" ]; then
-    LD_LIBRARY_PATH=$SST_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    case "$LD_LIBRARY_PATH" in
+        *"$SST_ROOT/lib"*) ;;
+        "") LD_LIBRARY_PATH="$SST_ROOT/lib" ;;
+        *) LD_LIBRARY_PATH="$SST_ROOT/lib:$LD_LIBRARY_PATH" ;;
+    esac
 fi
 export PATH LD_LIBRARY_PATH
 PROFEOF

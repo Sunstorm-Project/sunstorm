@@ -8,6 +8,7 @@ SSTlgcc
 SSTgmp
 SSTmpfr   SSTgmp
 SSTmpc    SSTgmp SSTmpfr
+SSTlsolc
 
 # === GCC Toolchain ===
 SSTgcc    SSTbinut SSTlgcc SSTgmp SSTmpfr SSTmpc
@@ -19,6 +20,40 @@ SSTgftn   SSTgcc SSTlgcc SSTlgfrt
 SSTlobjc  SSTlgcc
 SSTgobjc  SSTgcc SSTlgcc SSTlobjc
 SSTlgomp  SSTlgcc
+
+# === Core Libraries ===
+SSTzlib   SSTlsolc
+SSTbz2    SSTlsolc
+SSTxz     SSTlsolc
+SSTncurs  SSTlsolc
+SSTrdln   SSTlsolc SSTncurs
+SSTpcre2  SSTlsolc SSTzlib
+
+# === Core Userland ===
+SSTbash   SSTlsolc SSTncurs SSTrdln
+SSTmake   SSTlsolc
+SSTcorut  SSTlsolc
+SSTgrep   SSTlsolc SSTpcre2
+SSTsed    SSTlsolc
+SSTgawk   SSTlsolc SSTrdln
+SSTtar    SSTlsolc
+SSTgzip   SSTlsolc
+SSTpatch  SSTlsolc
+SSTdiffu  SSTlsolc
+SSTfindu  SSTlsolc
+SSTless   SSTlsolc SSTncurs
+SSTm4     SSTlsolc
+
+# === Build Infrastructure ===
+SSTaconf  SSTlsolc SSTm4
+SSTamake  SSTlsolc SSTaconf
+SSTltool  SSTlsolc
+SSTpkgcf  SSTlsolc
+
+# === Network / Crypto ===
+SSTossl   SSTlsolc SSTzlib
+SSTcurl   SSTlsolc SSTzlib SSTossl
+SSTwget   SSTlsolc SSTossl
 
 # === Applications (standalone) ===
 SSTslpkg

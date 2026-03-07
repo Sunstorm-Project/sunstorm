@@ -1,3 +1,5 @@
 P SSTlsolc  POSIX compatibility library
 P SSTzlib   Data compression library
 P SSTossl   OpenSSL cryptography toolkit
+P SSTprngd  Entropy daemon for OpenSSL
+P SSTprngd  Entropy daemon for OpenSSL

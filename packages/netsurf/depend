@@ -1,0 +1,8 @@
+P SSTlsolc  POSIX compatibility library
+P SSTzlib   Data compression library
+P SSTjpeg   JPEG image compression library
+P SSTlpng   PNG image library
+P SSTexpat  XML parser library
+P SSTcurl   URL transfer library
+P SSTliconv Character encoding conversion
+P SSTutf8p  UTF-8 processing library

@@ -1,0 +1,14 @@
+#!/bin/sh
+# SSTspcrd preremove — Clean up CDE integration for SPARCcord
+
+DTDIR=/usr/dt/appconfig
+
+rm -f "${DTDIR}/appmanager/C/Desktop_Apps/Sparccord"
+rm -f "${DTDIR}/types/C/sparccord.dt"
+rm -f "${DTDIR}/icons/C/Spcrd.l.pm"
+rm -f "${DTDIR}/icons/C/Spcrd.m.pm"
+rm -f "${DTDIR}/icons/C/Spcrd.l.bm"
+
+if [ -x /usr/dt/bin/dtaction ]; then
+    /usr/dt/bin/dtaction ReloadActions 2>/dev/null
+fi

@@ -1,6 +1,6 @@
 #!/bin/sh
 # sst-package.sh — SVR4 package creation for Sunstorm
-# Creates individual .pkg.gz files from a staging directory.
+# Creates individual .pkg.Z files from a staging directory.
 #
 # Usage: . lib/sst-package.sh
 #        sst_make_pkg <pkgdir> <stagedir> <outputdir>
@@ -113,8 +113,8 @@ sst_make_pkg() {
         pkgmk -o -d "$_spooldir" -r "${_stagedir}/root" -f "${_stagedir}/prototype"
         _pkgstream="${_outputdir}/${_pkg}-${_ver}.sst-${SST_OS}-${SST_ARCH}.pkg"
         pkgtrans -s "$_spooldir" "$_pkgstream" "$_pkg"
-        gzip -9 "$_pkgstream"
-        echo "    Created: ${_pkgstream}.gz"
+        compress "$_pkgstream"
+        echo "    Created: ${_pkgstream}.Z"
     else
         # Cross-build: create a tar-based package for later pkgmk on target
         echo "    NOTE: Not on Solaris — creating staging tarball"

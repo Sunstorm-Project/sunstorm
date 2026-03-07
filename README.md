@@ -88,7 +88,7 @@ SVR4 package names use the `SST` prefix:
 
 | Package | SVR4 Code | Description |
 |---------|-----------|-------------|
-| solpkg | `SSTslpkg` | Solaris SPARC package manager |
+| spm | `SSTspm` | Sunstorm Package Manager |
 | pizzafool | `SSTpzfol` | Motif/CDE pizza ordering app |
 | sparccord | `SSTspcrd` | Motif/CDE Discord client |
 
@@ -107,16 +107,17 @@ Sunstorm packages are cross-compiled on an x86_64 Linux host targeting
 
 ## Installing
 
-Packages are distributed as gzipped SVR4 datastreams. Install with
-[solpkg](https://github.com/firefly128/solpkg) or directly with `pkgadd`:
+Packages are distributed as compressed SVR4 datastreams (`.pkg.Z`). Install with
+[spm](https://github.com/firefly128/spm) or directly with `pkgadd`:
 
 ```sh
-# Via solpkg (auto-resolves dependencies):
-solpkg install gcc
-solpkg install bash coreutils grep sed make curl
+# Via spm (auto-resolves dependencies):
+spm install gcc
+spm install bash coreutils grep sed make curl
 
 # Manual install:
-gunzip < SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg.gz | pkgadd -n -d /dev/stdin all
+uncompress SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg.Z
+pkgadd -n -d SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg all
 ```
 
 ## Repository
@@ -125,7 +126,7 @@ Pre-built packages are published as
 [GitHub releases](https://github.com/firefly128/sunstorm/releases) on this repo.
 
 The `solpkg-repo.conf` file configures the GitHub-based package repository
-that `solpkg` uses for dependency resolution and downloads.
+that `spm` uses for dependency resolution and downloads.
 
 ## Dependency Map
 

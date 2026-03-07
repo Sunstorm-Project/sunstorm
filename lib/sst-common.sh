@@ -16,13 +16,13 @@ SST_ARCH="sparc"
 SST_OS="sunos5.7"
 
 # Package filename convention:
-#   <SSTcode>-<version>-<pkgrev>.sst-sunos5.7-sparc.pkg.gz
-# Example: SSTgcc-4.9.4-1.sst-sunos5.7-sparc.pkg.gz
+#   <SSTcode>-<version>-<pkgrev>.sst-sunos5.7-sparc.pkg.Z
+# Example: SSTgcc-4.9.4-1.sst-sunos5.7-sparc.pkg.Z
 sst_pkgfile() {
     _code="$1"    # e.g. SSTgcc
     _ver="$2"     # version string
     _rev="$3"     # e.g. 1
-    echo "${_code}-${_ver}-${_rev}.sst-${SST_OS}-${SST_ARCH}.pkg.gz"
+    echo "${_code}-${_ver}-${_rev}.sst-${SST_OS}-${SST_ARCH}.pkg.Z"
 }
 
 # Standard directory layout under $SST_BASEDIR

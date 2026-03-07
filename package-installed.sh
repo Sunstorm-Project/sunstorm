@@ -2,7 +2,7 @@
 # package-installed.sh - Create SVR4 packages from cross-build output
 #
 # Runs on Solaris 7. Scans files installed under INSTALL_ROOT and creates
-# individual .pkg.gz files following SVR4 ABI packaging conventions.
+# individual .pkg.Z files following SVR4 ABI packaging conventions.
 #
 # Usage:
 #   /bin/ksh package-installed.sh [output_dir] [install_root]
@@ -49,7 +49,7 @@ if [ "$(uname -s)" != "SunOS" ]; then
     echo "ERROR: Must run on Solaris (need pkgmk/pkgtrans)." >&2
     exit 1
 fi
-for tool in pkgmk pkgtrans gzip find; do
+for tool in pkgmk pkgtrans compress find; do
     if ! command -v $tool >/dev/null 2>&1; then
         echo "ERROR: Required tool '$tool' not found." >&2
         exit 1
@@ -151,9 +151,9 @@ EOF
         return 1
     fi
 
-    gzip -9f "${_pkgfile}"
-    _size=$(ls -l "${_pkgfile}.gz" | awk '{print $5}')
-    echo "  ${_realcount} objects -> ${_code}-${_ver}-${PKG_ARCH}.pkg.gz (${_size} bytes)"
+    compress "${_pkgfile}"
+    _size=$(ls -l "${_pkgfile}.Z" | awk '{print $5}')
+    echo "  ${_realcount} objects -> ${_code}-${_ver}-${PKG_ARCH}.pkg.Z (${_size} bytes)"
     echo ""
 }
 
@@ -352,7 +352,7 @@ echo "============================================"
 echo ""
 
 _total=0
-for f in "${OUTPUT}"/*.pkg.gz; do
+for f in "${OUTPUT}"/*.pkg.Z; do
     [ -f "$f" ] || continue
     _total=$((_total + 1))
     printf "  %-45s %s\n" "$(basename "$f")" "$(ls -lh "$f" | awk '{print $5}')"
@@ -369,7 +369,7 @@ echo "    4. SSTgcc  SSTlstdc  SSTlgfrt  SSTlobjc  SSTlgomp"
 echo "    5. SSTlstdd"
 echo "    6. SSTgcxx  SSTgftn  SSTgobjc"
 echo ""
-echo "  Install with:  pkgadd -d <file>.pkg.gz all"
+echo "  Install with:  uncompress <file>.pkg.Z && pkgadd -d <file>.pkg all"
 
 # Cleanup
 rm -rf "${TMPDIR}"

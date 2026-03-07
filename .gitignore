@@ -1,5 +1,5 @@
 *.tar.gz
-*.pkg.gz
+*.pkg.Z
 *.pkg
 output/
 spool/

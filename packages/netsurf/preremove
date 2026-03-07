@@ -1,0 +1,20 @@
+#!/bin/sh
+# SSTnsurf preremove — Clean up CDE integration for NetSurf
+#
+# Removes the NetSurf action and the WebBrowser override,
+# restoring the default HotJava-based web browser action.
+
+DTDIR=/usr/dt/appconfig
+
+rm -f "${DTDIR}/appmanager/C/Desktop_Apps/Netsurf"
+rm -f "${DTDIR}/types/C/netsurf.dt"
+rm -f "${DTDIR}/icons/C/Nsurf.l.pm"
+rm -f "${DTDIR}/icons/C/Nsurf.m.pm"
+rm -f "${DTDIR}/icons/C/Nsurf.l.bm"
+
+if [ -x /usr/dt/bin/dtaction ]; then
+    /usr/dt/bin/dtaction ReloadActions 2>/dev/null
+fi
+
+echo "NetSurf CDE integration removed."
+echo "The default web browser action has been restored."

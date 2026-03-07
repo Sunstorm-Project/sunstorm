@@ -1,15 +1,15 @@
 #!/bin/sh
-# make-packages.sh — Create SVR4 .pkg.gz files from split staging
+# make-packages.sh — Create SVR4 .pkg.Z files from split staging
 #
 # This script takes the per-package staging directories created by
 # split-staging.sh and produces proper SVR4 datastream packages.
 #
-# On Solaris: uses pkgmk + pkgtrans to create real .pkg.gz files
+# On Solaris: uses pkgmk + pkgtrans to create real .pkg.Z files
 # On Linux:   creates tar.gz archives (for later pkgmk on target)
 #
 # Usage: ./make-packages.sh [staging_dir] [output_dir]
 #   staging_dir: directory with per-package subdirs (default: ./staging)
-#   output_dir:  where to write .pkg.gz files (default: ./output)
+#   output_dir:  where to write .pkg.Z files (default: ./output)
 
 set -e
 
@@ -45,7 +45,7 @@ else
 fi
 echo ""
 
-# --finalize mode: create .pkg.gz from pre-staged tar.gz archives
+# --finalize mode: create .pkg.Z from pre-staged tar.gz archives
 if [ "$1" = "--finalize" ]; then
     if [ "${ON_SOLARIS}" != "true" ]; then
         echo "ERROR: --finalize requires Solaris with pkgmk/pkgtrans."
@@ -64,13 +64,13 @@ if [ "$1" = "--finalize" ]; then
         cd "$_tmpdir"
         gtar xzf "$tarball" 2>/dev/null || tar xf "$tarball"
         
-        # Generate .pkg.gz from extracted staging
+        # Generate .pkg.Z from extracted staging
         _create_svr4_pkg "$_tmpdir" "${OUTPUT}"
         rm -rf "$_tmpdir"
     done
     echo ""
     echo "Finalized packages in: ${OUTPUT}/"
-    ls -lh "${OUTPUT}"/*.pkg.gz 2>/dev/null
+    ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null
     exit 0
 fi
 
@@ -155,9 +155,9 @@ create_svr4_pkg() {
         pkgtrans -s "${_spooldir}" "${_pkgstream}" "${_pkg}" \
             2>&1 || { echo "    ERROR: pkgtrans failed for ${_pkg}"; return 1; }
         
-        gzip -9f "${_pkgstream}"
-        _size=$(ls -lh "${_pkgstream}.gz" | awk '{print $5}')
-        echo "    Created: $(basename "${_pkgstream}.gz") (${_size})"
+        compress "${_pkgstream}"
+        _size=$(ls -lh "${_pkgstream}.Z" | awk '{print $5}')
+        echo "    Created: $(basename "${_pkgstream}.Z") (${_size})"
         
         rm -rf "${_spooldir}"
     else

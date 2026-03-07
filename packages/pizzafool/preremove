@@ -1,0 +1,14 @@
+#!/bin/sh
+# SSTpzfol preremove — Clean up CDE integration for PizzaFool
+
+DTDIR=/usr/dt/appconfig
+
+rm -f "${DTDIR}/appmanager/C/Desktop_Apps/Pizzafool"
+rm -f "${DTDIR}/types/C/pizzafool.dt"
+rm -f "${DTDIR}/icons/C/Pzfol.l.pm"
+rm -f "${DTDIR}/icons/C/Pzfol.m.pm"
+rm -f "${DTDIR}/icons/C/Pzfol.l.bm"
+
+if [ -x /usr/dt/bin/dtaction ]; then
+    /usr/dt/bin/dtaction ReloadActions 2>/dev/null
+fi

@@ -1,88 +1,123 @@
-# Sunstorm — A Package Distribution for Solaris 7 SPARC
+# Sunstorm
 
-**Sunstorm** (package prefix `SST`) is a software distribution for Solaris 7
-(SunOS 5.7) on SPARC hardware. It provides modern GNU toolchain components,
-core userland utilities, and libraries as individual SVR4 packages with full
-dependency tracking.
+A package distribution for Solaris 7 (SunOS 5.7) SPARC. Package prefix: `SST`.
 
-Sunstorm is designed to be installed alongside the base Solaris 7 system
-without conflicting with Sun's bundled software or other third-party
-distributions.
+Public repo: github.com/firefly128/sunstorm — v1.0.0 released.
 
-## Prefix
+Sunstorm is registry-only. This repo contains no package source code. It holds the packaging scripts, dependency manifest, and spm repository configuration. Pre-built SVR4 `.pkg` files are published as GitHub Releases.
 
-All Sunstorm packages install to:
+## Install prefix
 
+All Sunstorm packages install to `/opt/sst`.
+
+## Installing packages
+
+Packages are distributed as SVR4 datastreams. Install with [spm](https://github.com/firefly128/spm) (recommended) or directly with `pkgadd`:
+
+```sh
+# Via spm (resolves dependencies automatically):
+spm install gcc
+spm install bash coreutils grep sed make curl
+
+# Manual install:
+pkgadd -n -d SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg all
 ```
-/opt/sst
-```
 
-## Package Naming
+Pre-built packages are published as [GitHub Releases](https://github.com/firefly128/sunstorm/releases). The `current` pre-release contains the latest build of every package.
 
-SVR4 package names use the `SST` prefix:
+The `solpkg-repo.conf` file configures the spm repository pointing at this GitHub repo's releases.
+
+## Package list
 
 ### Core Libraries
 
-| Package | SVR4 Code | Version | Description |
-|---------|-----------|---------|-------------|
-| libsolcompat | `SSTlsolc` | 1.0.0 | POSIX/C99 compatibility shim for Solaris 7 |
-| zlib | `SSTzlib` | 1.3.1 | Compression library |
-| bzip2 | `SSTbz2` | 1.0.8 | Block-sorting compressor |
-| xz | `SSTxz` | 5.4.6 | LZMA compression |
-| ncurses | `SSTncurs` | 6.4 | Terminal handling library |
-| readline | `SSTrdln` | 8.2 | Line editing library |
-| pcre2 | `SSTpcre2` | 10.42 | Perl-compatible regular expressions |
-| openssl | `SSTossl` | 1.1.1w | TLS/SSL and crypto library + CLI |
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| libsolcompat | `SSTlsolc` | POSIX/C99/C11 compatibility shim for Solaris 7 |
+| zlib | `SSTzlib` | Compression library |
+| bzip2 | `SSTbz2` | Block-sorting compressor |
+| xz | `SSTxz` | LZMA compression |
+| ncurses | `SSTncurs` | Terminal handling library |
+| readline | `SSTrdln` | Line editing library |
+| pcre2 | `SSTpcre2` | Perl-compatible regular expressions |
+| openssl | `SSTossl` | TLS/SSL and crypto library + CLI |
 
 ### Core Userland
 
-| Package | SVR4 Code | Version | Description |
-|---------|-----------|---------|-------------|
-| bash | `SSTbash` | 5.2.21 | Bourne Again Shell |
-| coreutils | `SSTcorut` | 9.4 | GNU core utilities (ls, cp, etc.) |
-| gawk | `SSTgawk` | 5.3.0 | Pattern scanning and processing |
-| grep | `SSTgrep` | 3.11 | Pattern matching |
-| sed | `SSTsed` | 4.9 | Stream editor |
-| tar | `SSTtar` | 1.35 | Tape archiver |
-| gzip | `SSTgzip` | 1.13 | Compression utility |
-| less | `SSTless` | 643 | Terminal pager |
-| patch | `SSTpatch` | 2.7.6 | Apply diffs |
-| diffutils | `SSTdiffu` | 3.10 | File comparison |
-| findutils | `SSTfindu` | 4.9.0 | File search utilities |
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| bash | `SSTbash` | Bourne Again Shell |
+| coreutils | `SSTcorut` | GNU core utilities |
+| gawk | `SSTgawk` | Pattern scanning and processing |
+| grep | `SSTgrep` | Pattern matching |
+| sed | `SSTsed` | Stream editor |
+| tar | `SSTtar` | Tape archiver |
+| gzip | `SSTgzip` | Compression utility |
+| less | `SSTless` | Terminal pager |
+| patch | `SSTpatch` | Apply diffs |
+| diffutils | `SSTdiffu` | File comparison |
+| findutils | `SSTfindu` | File search utilities |
+| make | `SSTmake` | GNU Make |
+| m4 | `SSTm4` | Macro processor |
 
 ### Build Infrastructure
 
-| Package | SVR4 Code | Version | Description |
-|---------|-----------|---------|-------------|
-| make | `SSTmake` | 4.4.1 | GNU Make |
-| m4 | `SSTm4` | 1.4.19 | Macro processor |
-| autoconf | `SSTaconf` | 2.72 | Configure script generator |
-| automake | `SSTamake` | 1.16.5 | Makefile generator |
-| libtool | `SSTltool` | 2.4.7 | Library build tool |
-| pkgconf | `SSTpkgcf` | 2.1.0 | Package compiler/linker flag tool |
-
-### Network / Crypto
-
-| Package | SVR4 Code | Version | Description |
-|---------|-----------|---------|-------------|
-| curl | `SSTcurl` | 8.6.0 | URL transfer tool and library |
-| wget | `SSTwget` | 1.21.4 | Network downloader |
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| autoconf | `SSTaconf` | Configure script generator |
+| automake | `SSTamake` | Makefile generator |
+| libtool | `SSTltool` | Library build tool |
+| pkgconf | `SSTpkgcf` | Package compiler/linker flag tool |
+| bison | `SSTbison` | Parser generator |
+| flex | `SSTflex` | Lexical analyzer generator |
+| texinfo | `SSTtxinf` | Documentation format tools |
 
 ### GCC Toolchain
 
-| Package | SVR4 Code | Version | Description |
-|---------|-----------|---------|-------------|
-| gcc | `SSTgcc` | 11.4.0 | GCC C/C++/Fortran/ObjC standalone toolchain |
-| binutils | `SSTbinut` | 2.32 | GNU assembler, linker, and tools |
-| gmp | `SSTgmp` | 6.1.2 | GMP arithmetic library |
-| mpfr | `SSTmpfr` | 3.1.4 | MPFR floating-point library |
-| mpc | `SSTmpc` | 1.0.3 | MPC complex arithmetic |
-| libgcc | `SSTlgcc` | 11.4.0 | libgcc_s.so runtime |
-| libstdc++ | `SSTlstdc` | 11.4.0 | libstdc++.so.6 runtime |
-| libstdc++-devel | `SSTlstdd` | 11.4.0 | libstdc++ headers + static lib |
-| libgfortran | `SSTlgfrt` | 11.4.0 | Fortran runtime library |
-| libobjc | `SSTlobjc` | 11.4.0 | Objective-C runtime library |
-| libgomp | `SSTlgomp` | 11.4.0 | OpenMP runtime |
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| gcc (C) | `SSTgcc` | GCC 11.4.0 C compiler |
+| gcc-c++ | `SSTgcxx` | GCC 11.4.0 C++ compiler |
+| gcc-fortran | `SSTgftn` | GCC 11.4.0 Fortran compiler |
+| gcc-objc | `SSTgobjc` | GCC 11.4.0 Objective-C compiler |
+| binutils | `SSTbinut` | GNU assembler, linker, and tools |
+| gmp | `SSTgmp` | GMP arbitrary-precision arithmetic |
+| mpfr | `SSTmpfr` | MPFR floating-point library |
+| mpc | `SSTmpc` | MPC complex arithmetic library |
+| libgcc | `SSTlgcc` | libgcc_s.so runtime |
+| libstdc++ | `SSTlstdc` | libstdc++.so.6 runtime |
+| libstdc++-devel | `SSTlstdd` | libstdc++ headers + static lib |
+| libgfortran | `SSTlgfrt` | Fortran runtime library |
+| libobjc | `SSTlobjc` | Objective-C runtime library |
+| libgomp | `SSTlgomp` | OpenMP runtime |
+
+### Network / Crypto
+
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| curl | `SSTcurl` | URL transfer tool and library |
+| wget | `SSTwget` | Network downloader |
+| openssh | `SSTossh` | OpenSSH client and server |
+
+### Development Essentials
+
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| expat | `SSTexpat` | XML parser library |
+| libiconv | `SSTliconv` | Character encoding conversion |
+| gettext | `SSTgtxt` | Internationalization library |
+| perl | `SSTperl` | Perl interpreter |
+| git | `SSTgit` | Distributed version control |
+| vim | `SSTvim` | Vi IMproved text editor |
+| screen | `SSTscrn` | Terminal multiplexer |
+
+### Media Libraries
+
+| Package | SVR4 Code | Description |
+|---------|-----------|-------------|
+| libpng | `SSTlpng` | PNG image library |
+| libjpeg | `SSTljpeg` | JPEG image library |
+| libutf8proc | `SSTlutf8` | Unicode processing library |
 
 ### Applications
 
@@ -91,100 +126,65 @@ SVR4 package names use the `SST` prefix:
 | spm | `SSTspm` | Sunstorm Package Manager |
 | pizzafool | `SSTpzfol` | Motif/CDE pizza ordering app |
 | sparccord | `SSTspcrd` | Motif/CDE Discord client |
+| solpkg | `SSTslpkg` | Low-level SVR4 package utilities |
+| prngd | `SSTprngd` | Pseudo-random number generator daemon (entropy for OpenSSL) |
 
-## Building
-
-Sunstorm packages are cross-compiled on an x86_64 Linux host targeting
-`sparc-sun-solaris2.7` using the build infrastructure in `sparc-build-host`.
-
-```sh
-# Build all packages (from the cross-build Docker container):
-./build-all.sh
-
-# List all packages and their dependencies:
-./sst-deps.sh
-```
-
-## Installing
-
-Packages are distributed as compressed SVR4 datastreams (`.pkg.Z`). Install with
-[spm](https://github.com/firefly128/spm) or directly with `pkgadd`:
-
-```sh
-# Via spm (auto-resolves dependencies):
-spm install gcc
-spm install bash coreutils grep sed make curl
-
-# Manual install:
-uncompress SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg.Z
-pkgadd -n -d SSTgcc-11.4.0-1.sst-sunos5.7-sparc.pkg all
-```
-
-## Repository
-
-Pre-built packages are published as
-[GitHub releases](https://github.com/firefly128/sunstorm/releases) on this repo.
-
-The `solpkg-repo.conf` file configures the GitHub-based package repository
-that `spm` uses for dependency resolution and downloads.
-
-## Dependency Map
+## Dependency map
 
 ```
 Foundation (no deps):
   SSTbinut  SSTlgcc  SSTgmp  SSTlsolc
 
-Toolchain deps:
-  SSTmpfr   ← SSTgmp
-  SSTmpc    ← SSTgmp, SSTmpfr
-  SSTgcc    ← SSTbinut, SSTlgcc, SSTgmp, SSTmpfr, SSTmpc
-
-GCC runtime libs:
-  SSTlstdc  ← SSTlgcc
-  SSTlstdd  ← SSTlstdc
-  SSTlgfrt  ← SSTlgcc
-  SSTlobjc  ← SSTlgcc
-  SSTlgomp  ← SSTlgcc
+Toolchain:
+  SSTmpfr   <- SSTgmp
+  SSTmpc    <- SSTgmp SSTmpfr
+  SSTgcc    <- SSTbinut SSTlgcc SSTgmp SSTmpfr SSTmpc
+  SSTlstdc  <- SSTlgcc
+  SSTlstdd  <- SSTlstdc
+  SSTgcxx   <- SSTgcc SSTlstdc SSTlstdd
+  SSTlgfrt  <- SSTlgcc
+  SSTlobjc  <- SSTlgcc
 
 Core libraries:
-  SSTzlib   ← SSTlsolc
-  SSTbz2    ← SSTlsolc
-  SSTxz     ← SSTlsolc
-  SSTncurs  ← SSTlsolc
-  SSTrdln   ← SSTlsolc, SSTncurs
-  SSTpcre2  ← SSTlsolc, SSTzlib
+  SSTzlib   <- SSTlsolc
+  SSTbz2    <- SSTlsolc
+  SSTxz     <- SSTlsolc
+  SSTncurs  <- SSTlsolc
+  SSTrdln   <- SSTlsolc SSTncurs
+  SSTpcre2  <- SSTlsolc SSTzlib
 
-Core userland:
-  SSTbash   ← SSTlsolc, SSTncurs, SSTrdln
-  SSTcorut  ← SSTlsolc
-  SSTgawk   ← SSTlsolc, SSTrdln
-  SSTgrep   ← SSTlsolc, SSTpcre2
-  SSTsed    ← SSTlsolc
-  SSTtar    ← SSTlsolc
-  SSTgzip   ← SSTlsolc
-  SSTless   ← SSTlsolc, SSTncurs
-  SSTpatch  ← SSTlsolc
-  SSTdiffu  ← SSTlsolc
-  SSTfindu  ← SSTlsolc
+Core userland / build infra:
+  SSTbash   <- SSTlsolc SSTncurs SSTrdln
+  SSTcorut  <- SSTlsolc
+  SSTgrep   <- SSTlsolc SSTpcre2
+  SSTaconf  <- SSTlsolc SSTm4
+  SSTamake  <- SSTlsolc SSTaconf
 
-Build infrastructure:
-  SSTmake   ← SSTlsolc
-  SSTm4     ← SSTlsolc
-  SSTaconf  ← SSTlsolc, SSTm4
-  SSTamake  ← SSTlsolc, SSTaconf
-  SSTltool  ← SSTlsolc
-  SSTpkgcf  ← SSTlsolc
-
-Network / Crypto:
-  SSTossl   ← SSTlsolc, SSTzlib
-  SSTcurl   ← SSTlsolc, SSTzlib, SSTossl
-  SSTwget   ← SSTlsolc, SSTossl
+Network / crypto:
+  SSTossl   <- SSTlsolc SSTzlib
+  SSTcurl   <- SSTlsolc SSTzlib SSTossl
+  SSTwget   <- SSTlsolc SSTossl
+  SSTossh   <- SSTlsolc SSTzlib SSTossl
 
 Applications (standalone):
   SSTslpkg  SSTpzfol  SSTspcrd
 ```
 
+## How packages are built
+
+Packages are cross-compiled on an x86_64 Linux host using `ghcr.io/firefly128/sparc-toolchain:latest` (GCC 11.4.0 targeting `sparc-sun-solaris2.7`). The build pipeline lives in [sparc-build-host](https://github.com/firefly128/sparc-build-host).
+
+Finalization — converting cross-compiled staging tarballs into SVR4 `.pkg` files using native `pkgmk`/`pkgtrans` — runs on a Solaris 7 QEMU VM.
+
+The `build-packages.yml` workflow in sparc-build-host automates this two-stage process and uploads finished `.pkg` files to the `current` pre-release on this repo.
+
+To package manually on Solaris:
+
+```sh
+./make-packages.sh [staging_dir] [output_dir]
+```
+
 ## License
 
-Individual packages retain their upstream licenses (GPL, LGPL, etc.).
-Build infrastructure is MIT licensed.
+Individual packages retain their upstream licenses (GPL, LGPL, BSD, etc.).
+Build and packaging infrastructure is MIT licensed.

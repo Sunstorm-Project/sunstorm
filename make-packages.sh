@@ -52,22 +52,33 @@ if [ "$1" = "--finalize" ]; then
         exit 1
     fi
     shift
-    TARDIR="${1:-.}"
+    TARDIR="${1:?Usage: make-packages.sh --finalize <tarball_dir> [output_dir]}"
+    shift
+    OUTPUT="${1:-${BASEDIR}/output}"
+    mkdir -p "${OUTPUT}"
+
     echo "Finalizing packages from tarballs in ${TARDIR}..."
-    for tarball in "${TARDIR}"/*.sst-*.tar.gz; do
+    echo "Output directory: ${OUTPUT}"
+
+    extract_base="/tmp/sst-finalize-$$"
+    mkdir -p "${extract_base}"
+
+    for tarball in "${TARDIR}"/*-staging.tar.gz; do
         [ -f "$tarball" ] || continue
-        _base=$(basename "$tarball" .tar.gz)
-        _tmpdir="/tmp/sst-finalize-$$/${_base}"
-        mkdir -p "$_tmpdir"
-        
+        staging_name=$(basename "$tarball" .tar.gz)
+        staging_dir="${extract_base}/${staging_name}"
+
         echo "  Extracting: $(basename "$tarball")"
-        cd "$_tmpdir"
-        gtar xzf "$tarball" 2>/dev/null || tar xf "$tarball"
-        
-        # Generate .pkg.Z from extracted staging
-        _create_svr4_pkg "$_tmpdir" "${OUTPUT}"
-        rm -rf "$_tmpdir"
+        # Extract into the base temp dir so tarball's top-level dir lands at
+        # ${extract_base}/${staging_name}/ — avoiding double-nesting.
+        tar xzf "$tarball" -C "${extract_base}" 2>/dev/null \
+            || gtar xzf "$tarball" -C "${extract_base}"
+
+        create_svr4_pkg "${staging_dir}" "${OUTPUT}"
+        rm -rf "${staging_dir}"
     done
+
+    rm -rf "${extract_base}"
     echo ""
     echo "Finalized packages in: ${OUTPUT}/"
     ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null

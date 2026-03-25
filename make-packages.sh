@@ -148,8 +148,10 @@ if [ "$1" = "--finalize" ]; then
         staging_dir="${extract_base}/${staging_name}"
 
         echo "  Extracting: $(basename "$tarball")"
-        # Solaris /usr/bin/tar does not support -z; use SST GNU tar explicitly.
-        /opt/sst/bin/tar xzf "$tarball" -C "${extract_base}"
+        # Use SST GNU tar: Solaris /usr/bin/tar has no -z support.
+        # --touch skips utime calls, avoiding ENOENT on symlinks whose targets
+        # haven't been extracted yet (Solaris utimes(2) follows symlinks).
+        /opt/sst/bin/tar xzf "$tarball" --touch -C "${extract_base}"
 
         create_svr4_pkg "${staging_dir}" "${OUTPUT}"
         rm -rf "${staging_dir}"

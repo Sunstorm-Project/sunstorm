@@ -103,6 +103,7 @@ create_svr4_pkg() {
         pkgtrans -s "${_spooldir}" "${_pkgstream}" "${_pkg}" \
             2>&1 || { echo "    ERROR: pkgtrans failed for ${_pkg}"; return 1; }
         
+        rm -f "${_pkgstream}.Z"
         compress "${_pkgstream}"
         _size=$(ls -lh "${_pkgstream}.Z" | awk '{print $5}')
         echo "    Created: $(basename "${_pkgstream}.Z") (${_size})"

@@ -37,6 +37,7 @@ gen_prototype() {
         [ -f "${_pkgdir}/preremove" ] && echo "i preremove"
         
         if [ -d "${_pkgdir}/root" ]; then
+            local _saved_dir="$PWD"
             cd "${_pkgdir}/root"
             # Directories
             find . -type d | sort | while IFS= read -r _d; do
@@ -57,7 +58,7 @@ gen_prototype() {
                     echo "f none /${_f} 0644 root bin"
                 fi
             done
-            cd - >/dev/null
+            cd "$_saved_dir"
         fi
     } > "$_proto"
 }

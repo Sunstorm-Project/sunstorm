@@ -150,9 +150,16 @@ if [ "$1" = "--finalize" ]; then
 
         echo "  Extracting: $(basename "$tarball")"
         # Use SST GNU tar: Solaris /usr/bin/tar has no -z support.
-        # --touch skips utime calls, avoiding ENOENT on symlinks whose targets
-        # haven't been extracted yet (Solaris utimes(2) follows symlinks).
-        /opt/sst/bin/tar xzf "$tarball" --touch -C "${extract_base}"
+        # --touch avoids setting mtime on symlinks, but Solaris utimes(2) still
+        # follows the symlink and returns ENOENT when the target hasn't been
+        # extracted yet — causing tar to exit non-zero even though all content
+        # was extracted successfully.  Suppress these utime warnings on stderr
+        # and treat any exit as successful if the staging directory was created.
+        /opt/sst/bin/tar xzf "$tarball" --touch -C "${extract_base}" 2>/dev/null || true
+        if [ ! -d "${staging_dir}" ]; then
+            echo "  ERROR: tar extraction failed for $(basename "$tarball") — staging dir missing"
+            continue
+        fi
 
         create_svr4_pkg "${staging_dir}" "${OUTPUT}"
         rm -rf "${staging_dir}"

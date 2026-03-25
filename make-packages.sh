@@ -148,8 +148,8 @@ if [ "$1" = "--finalize" ]; then
         staging_dir="${extract_base}/${staging_name}"
 
         echo "  Extracting: $(basename "$tarball")"
-        tar xzf "$tarball" -C "${extract_base}" 2>/dev/null \
-            || gtar xzf "$tarball" -C "${extract_base}"
+        # Solaris /usr/bin/tar does not support -z; use SST GNU tar explicitly.
+        /opt/sst/bin/tar xzf "$tarball" -C "${extract_base}"
 
         create_svr4_pkg "${staging_dir}" "${OUTPUT}"
         rm -rf "${staging_dir}"

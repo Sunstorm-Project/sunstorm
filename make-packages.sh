@@ -30,14 +30,13 @@ gen_prototype() {
     _pkgdir="$1"     # directory containing pkginfo, depend, root/
     _proto="${_pkgdir}/prototype"
     
-    {
+    (
         echo "i pkginfo"
         [ -f "${_pkgdir}/depend" ] && echo "i depend"
         [ -f "${_pkgdir}/postinstall" ] && echo "i postinstall"
         [ -f "${_pkgdir}/preremove" ] && echo "i preremove"
-        
+
         if [ -d "${_pkgdir}/root" ]; then
-            local _saved_dir="$PWD"
             cd "${_pkgdir}/root"
             # Directories
             find . -type d | sort | while IFS= read -r _d; do
@@ -58,9 +57,8 @@ gen_prototype() {
                     echo "f none /${_f} 0644 root bin"
                 fi
             done
-            cd "$_saved_dir"
         fi
-    } > "$_proto"
+    ) > "$_proto"
 }
 
 # ============================================================

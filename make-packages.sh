@@ -14,38 +14,18 @@
 set -e
 
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
-STAGING="${1:-${BASEDIR}/staging}"
-OUTPUT="${2:-${BASEDIR}/output}"
 
 . "${BASEDIR}/lib/sst-common.sh"
-
-echo "============================================"
-echo "  Sunstorm SVR4 Package Builder"
-echo "  Staging: ${STAGING}"
-echo "  Output:  ${OUTPUT}"
-echo "============================================"
-echo ""
-
-if [ ! -d "${STAGING}" ]; then
-    echo "ERROR: Staging directory not found: ${STAGING}"
-    echo "Run split-staging.sh first to create per-package staging directories."
-    exit 1
-fi
-
-mkdir -p "${OUTPUT}"
 
 # Detect if we're on Solaris (real SVR4 tools available)
 ON_SOLARIS=false
 if [ "$(uname -s)" = "SunOS" ] && command -v pkgmk >/dev/null 2>&1; then
     ON_SOLARIS=true
-    echo "Running on Solaris — will create native SVR4 packages."
-else
-    echo "Not on Solaris — will create tar.gz staging archives."
-    echo "Transfer these to Solaris and run: make-packages.sh --finalize"
 fi
-echo ""
 
 # --finalize mode: create .pkg.Z from pre-staged tar.gz archives
+# Must be checked before positional-argument parsing to avoid treating
+# "--finalize" as the staging directory path.
 if [ "$1" = "--finalize" ]; then
     if [ "${ON_SOLARIS}" != "true" ]; then
         echo "ERROR: --finalize requires Solaris with pkgmk/pkgtrans."
@@ -84,6 +64,32 @@ if [ "$1" = "--finalize" ]; then
     ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null
     exit 0
 fi
+
+STAGING="${1:-${BASEDIR}/staging}"
+OUTPUT="${2:-${BASEDIR}/output}"
+
+echo "============================================"
+echo "  Sunstorm SVR4 Package Builder"
+echo "  Staging: ${STAGING}"
+echo "  Output:  ${OUTPUT}"
+echo "============================================"
+echo ""
+
+if [ ! -d "${STAGING}" ]; then
+    echo "ERROR: Staging directory not found: ${STAGING}"
+    echo "Run split-staging.sh first to create per-package staging directories."
+    exit 1
+fi
+
+mkdir -p "${OUTPUT}"
+
+if [ "${ON_SOLARIS}" = "true" ]; then
+    echo "Running on Solaris — will create native SVR4 packages."
+else
+    echo "Not on Solaris — will create tar.gz staging archives."
+    echo "Transfer these to Solaris and run: make-packages.sh --finalize"
+fi
+echo ""
 
 # ============================================================
 # Generate prototype file from package root

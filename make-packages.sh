@@ -23,74 +23,6 @@ if [ "$(uname -s)" = "SunOS" ] && command -v pkgmk >/dev/null 2>&1; then
     ON_SOLARIS=true
 fi
 
-# --finalize mode: create .pkg.Z from pre-staged tar.gz archives
-# Must be checked before positional-argument parsing to avoid treating
-# "--finalize" as the staging directory path.
-if [ "$1" = "--finalize" ]; then
-    if [ "${ON_SOLARIS}" != "true" ]; then
-        echo "ERROR: --finalize requires Solaris with pkgmk/pkgtrans."
-        exit 1
-    fi
-    shift
-    TARDIR="${1:?Usage: make-packages.sh --finalize <tarball_dir> [output_dir]}"
-    shift
-    OUTPUT="${1:-${BASEDIR}/output}"
-    mkdir -p "${OUTPUT}"
-
-    echo "Finalizing packages from tarballs in ${TARDIR}..."
-    echo "Output directory: ${OUTPUT}"
-
-    extract_base="/tmp/sst-finalize-$$"
-    mkdir -p "${extract_base}"
-
-    for tarball in "${TARDIR}"/*-staging.tar.gz; do
-        [ -f "$tarball" ] || continue
-        staging_name=$(basename "$tarball" .tar.gz)
-        staging_dir="${extract_base}/${staging_name}"
-
-        echo "  Extracting: $(basename "$tarball")"
-        # Extract into the base temp dir so tarball's top-level dir lands at
-        # ${extract_base}/${staging_name}/ — avoiding double-nesting.
-        tar xzf "$tarball" -C "${extract_base}" 2>/dev/null \
-            || gtar xzf "$tarball" -C "${extract_base}"
-
-        create_svr4_pkg "${staging_dir}" "${OUTPUT}"
-        rm -rf "${staging_dir}"
-    done
-
-    rm -rf "${extract_base}"
-    echo ""
-    echo "Finalized packages in: ${OUTPUT}/"
-    ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null
-    exit 0
-fi
-
-STAGING="${1:-${BASEDIR}/staging}"
-OUTPUT="${2:-${BASEDIR}/output}"
-
-echo "============================================"
-echo "  Sunstorm SVR4 Package Builder"
-echo "  Staging: ${STAGING}"
-echo "  Output:  ${OUTPUT}"
-echo "============================================"
-echo ""
-
-if [ ! -d "${STAGING}" ]; then
-    echo "ERROR: Staging directory not found: ${STAGING}"
-    echo "Run split-staging.sh first to create per-package staging directories."
-    exit 1
-fi
-
-mkdir -p "${OUTPUT}"
-
-if [ "${ON_SOLARIS}" = "true" ]; then
-    echo "Running on Solaris — will create native SVR4 packages."
-else
-    echo "Not on Solaris — will create tar.gz staging archives."
-    echo "Transfer these to Solaris and run: make-packages.sh --finalize"
-fi
-echo ""
-
 # ============================================================
 # Generate prototype file from package root
 # ============================================================
@@ -187,6 +119,75 @@ create_svr4_pkg() {
     
     echo ""
 }
+
+# ============================================================
+# --finalize mode: create .pkg.Z from pre-staged tar.gz archives
+# Must be checked before positional-argument parsing to avoid treating
+# "--finalize" as the staging directory path.
+# Functions above must be defined before this block is reached.
+# ============================================================
+if [ "$1" = "--finalize" ]; then
+    if [ "${ON_SOLARIS}" != "true" ]; then
+        echo "ERROR: --finalize requires Solaris with pkgmk/pkgtrans."
+        exit 1
+    fi
+    shift
+    TARDIR="${1:?Usage: make-packages.sh --finalize <tarball_dir> [output_dir]}"
+    shift
+    OUTPUT="${1:-${BASEDIR}/output}"
+    mkdir -p "${OUTPUT}"
+
+    echo "Finalizing packages from tarballs in ${TARDIR}..."
+    echo "Output directory: ${OUTPUT}"
+
+    extract_base="/tmp/sst-finalize-$$"
+    mkdir -p "${extract_base}"
+
+    for tarball in "${TARDIR}"/*-staging.tar.gz; do
+        [ -f "$tarball" ] || continue
+        staging_name=$(basename "$tarball" .tar.gz)
+        staging_dir="${extract_base}/${staging_name}"
+
+        echo "  Extracting: $(basename "$tarball")"
+        tar xzf "$tarball" -C "${extract_base}" 2>/dev/null \
+            || gtar xzf "$tarball" -C "${extract_base}"
+
+        create_svr4_pkg "${staging_dir}" "${OUTPUT}"
+        rm -rf "${staging_dir}"
+    done
+
+    rm -rf "${extract_base}"
+    echo ""
+    echo "Finalized packages in: ${OUTPUT}/"
+    ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null
+    exit 0
+fi
+
+STAGING="${1:-${BASEDIR}/staging}"
+OUTPUT="${2:-${BASEDIR}/output}"
+
+echo "============================================"
+echo "  Sunstorm SVR4 Package Builder"
+echo "  Staging: ${STAGING}"
+echo "  Output:  ${OUTPUT}"
+echo "============================================"
+echo ""
+
+if [ ! -d "${STAGING}" ]; then
+    echo "ERROR: Staging directory not found: ${STAGING}"
+    echo "Run split-staging.sh first to create per-package staging directories."
+    exit 1
+fi
+
+mkdir -p "${OUTPUT}"
+
+if [ "${ON_SOLARIS}" = "true" ]; then
+    echo "Running on Solaris — will create native SVR4 packages."
+else
+    echo "Not on Solaris — will create tar.gz staging archives."
+    echo "Transfer these to Solaris and run: make-packages.sh --finalize"
+fi
+echo ""
 
 # ============================================================
 # Process all packages

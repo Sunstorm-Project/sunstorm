@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/opt/sst/bin/bash
 # make-packages.sh — Create SVR4 .pkg.Z files from split staging
 #
 # This script takes the per-package staging directories created by

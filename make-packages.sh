@@ -93,15 +93,17 @@ create_svr4_pkg() {
         _spooldir="/tmp/sst-spool-$$"
         mkdir -p "${_spooldir}"
         
-        pkgmk -o \
+        _out=$(pkgmk -o \
             -d "${_spooldir}" \
             -r "${_pkgstage}/root" \
             -f "${_pkgstage}/prototype" \
-            2>&1 || { echo "    ERROR: pkgmk failed for ${_pkg}"; return 1; }
-        
+            2>&1) || { echo "    ERROR: pkgmk failed for ${_pkg}"; return 1; }
+        echo "$_out" | grep -v "getcwd: cannot access parent directories"
+
         _pkgstream="${_outdir}/${_pkg}-${_ver}-1.sst-${SST_OS}-${SST_ARCH}.pkg"
-        pkgtrans -s "${_spooldir}" "${_pkgstream}" "${_pkg}" \
-            2>&1 || { echo "    ERROR: pkgtrans failed for ${_pkg}"; return 1; }
+        _out=$(pkgtrans -s "${_spooldir}" "${_pkgstream}" "${_pkg}" \
+            2>&1) || { echo "    ERROR: pkgtrans failed for ${_pkg}"; return 1; }
+        echo "$_out" | grep -v "getcwd: cannot access parent directories"
         
         rm -f "${_pkgstream}.Z"
         compress "${_pkgstream}"

@@ -152,16 +152,30 @@ if [ "$1" = "--finalize" ]; then
 
         echo "  Extracting: $(basename "$tarball")"
         # Use SST GNU tar: Solaris /usr/bin/tar has no -z support.
-        # --touch avoids setting mtime on symlinks, but Solaris utimes(2) still
-        # follows the symlink and returns ENOENT when the target hasn't been
-        # extracted yet — causing tar to exit non-zero even though all content
-        # was extracted successfully.  Suppress these utime warnings on stderr
-        # and treat any exit as successful if the staging directory was created.
-        /opt/sst/bin/tar xzf "$tarball" --touch -C "${extract_base}" 2>/dev/null || true
+        # Do NOT use --touch: it causes tar to call utimes() on symlinks
+        # which follows the symlink on Solaris and returns ENOENT when
+        # the target hasn't been extracted yet.  For large packages like
+        # perl (2800+ files, many symlinks) the cascading utime errors
+        # can cause tar to abort extraction entirely.
+        # Instead, extract without --touch and ignore the non-zero exit
+        # that comes from tar trying to preserve timestamps on symlinks.
+        _tar_stderr="/tmp/sst-tar-err-$$"
+        /opt/sst/bin/tar xzf "$tarball" -C "${extract_base}" 2>"${_tar_stderr}" || true
         if [ ! -d "${staging_dir}" ]; then
             echo "  ERROR: tar extraction failed for $(basename "$tarball") — staging dir missing"
+            cat "${_tar_stderr}" 2>/dev/null | head -20
+            rm -f "${_tar_stderr}"
             continue
         fi
+        if [ ! -f "${staging_dir}/pkginfo" ]; then
+            echo "  ERROR: extraction incomplete for $(basename "$tarball") — pkginfo missing"
+            echo "  Files extracted: $(find "${staging_dir}" -type f 2>/dev/null | wc -l)"
+            echo "  Disk space: $(df -k / 2>/dev/null | tail -1)"
+            cat "${_tar_stderr}" 2>/dev/null | tail -10
+            rm -f "${_tar_stderr}"
+            exit 1
+        fi
+        rm -f "${_tar_stderr}"
 
         create_svr4_pkg "${staging_dir}" "${OUTPUT}"
         rm -rf "${staging_dir}"

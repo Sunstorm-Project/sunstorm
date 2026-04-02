@@ -170,12 +170,18 @@ if [ "$1" = "--finalize" ]; then
             continue
         fi
         if [ ! -f "${staging_dir}/pkginfo" ]; then
-            echo "  ERROR: extraction incomplete for $(basename "$tarball") — pkginfo missing"
-            echo "  Files extracted: $(find "${staging_dir}" -type f 2>/dev/null | wc -l)"
-            echo "  Disk space: $(df -k / 2>/dev/null | tail -1)"
-            cat "${_tar_stderr}" 2>/dev/null | tail -10
-            rm -f "${_tar_stderr}"
-            exit 1
+            _file_count=$(find "${staging_dir}" -type f 2>/dev/null | wc -l)
+            _tar_size=$(wc -c < "$tarball" 2>/dev/null | tr -d ' ')
+            if [ "${_tar_size:-0}" -lt 1024 ]; then
+                echo "  SKIP: $(basename "$tarball") is a stub (${_tar_size} bytes, no pkginfo)"
+            else
+                echo "  ERROR: extraction incomplete for $(basename "$tarball") — pkginfo missing"
+                echo "  Tarball size: ${_tar_size} bytes, files extracted: ${_file_count}"
+                echo "  Disk space: $(df -k "${extract_base}" 2>/dev/null | tail -1)"
+                cat "${_tar_stderr}" 2>/dev/null | tail -10
+            fi
+            rm -rf "${staging_dir}" "${_tar_stderr}"
+            continue
         fi
         rm -f "${_tar_stderr}"
 

@@ -90,7 +90,7 @@ create_svr4_pkg() {
     
     if [ "${ON_SOLARIS}" = "true" ]; then
         # Real SVR4 package creation
-        _spooldir="/tmp/sst-spool-$$"
+        _spooldir="/export/home/sst-spool-$$"
         mkdir -p "${_spooldir}"
         
         _out=$(pkgmk -o \
@@ -142,7 +142,9 @@ if [ "$1" = "--finalize" ]; then
     echo "Finalizing packages from tarballs in ${TARDIR}..."
     echo "Output directory: ${OUTPUT}"
 
-    extract_base="/tmp/sst-finalize-$$"
+    # Extract to /export (large disk) instead of /tmp (on root, ~2GB).
+    # Perl alone has 2800+ files that overflow the root partition.
+    extract_base="/export/home/sst-finalize-$$"
     mkdir -p "${extract_base}"
 
     for tarball in "${TARDIR}"/*-staging.tar.gz; do

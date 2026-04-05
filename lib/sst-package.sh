@@ -68,7 +68,10 @@ sst_gen_prototype() {
                 [ -z "$_d" ] && continue
                 echo "d none ${_d} 0755 root bin"
             done
-            find . -type f -o -type l | sed 's|^\.||' | sort | while read -r _f; do
+            # Solaris 7's find emits duplicates (including directories)
+            # when `-type f -o -type l` is used — run the two tests
+            # separately for portability.
+            { find . -type f; find . -type l; } | sed 's|^\.||' | sort -u | while read -r _f; do
                 _full="${_stagedir}/root${_f}"
                 if [ -L "$_full" ]; then
                     _target=$(readlink "$_full")

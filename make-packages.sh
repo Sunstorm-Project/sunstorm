@@ -44,8 +44,10 @@ gen_prototype() {
                 [ -z "$_d" ] && continue
                 echo "d none /${_d} 0755 root bin"
             done
-            # Files and symlinks
-            find . \( -type f -o -type l \) | sort | while IFS= read -r _f; do
+            # Files and symlinks.  Solaris 7 find emits duplicates
+            # (including directories) when `\( -type f -o -type l \)`
+            # is used — run the tests separately for portability.
+            { find . -type f; find . -type l; } | sort -u | while IFS= read -r _f; do
                 _f=$(echo "$_f" | sed 's|^\./||')
                 _full="${_pkgdir}/root/${_f}"
                 if [ -L "$_full" ]; then
@@ -107,7 +109,7 @@ create_svr4_pkg() {
         
         rm -f "${_pkgstream}.Z"
         compress "${_pkgstream}"
-        _size=$(ls -lh "${_pkgstream}.Z" | awk '{print $5}')
+        _size=$(ls -l "${_pkgstream}.Z" | awk '{print $5}')
         echo "    Created: $(basename "${_pkgstream}.Z") (${_size})"
         
         rm -rf "${_spooldir}"
@@ -115,7 +117,7 @@ create_svr4_pkg() {
         # Create tar.gz for later pkgmk on Solaris
         _tarball="${_outdir}/${_pkg}-${_ver}-1.sst-${SST_OS}-${SST_ARCH}.tar.gz"
         tar czf "$_tarball" -C "${_pkgstage}" .
-        _size=$(ls -lh "$_tarball" | awk '{print $5}')
+        _size=$(ls -l "$_tarball" | awk '{print $5}')
         echo "    Created: $(basename "$_tarball") (${_size})"
     fi
     
@@ -192,7 +194,7 @@ if [ "$1" = "--finalize" ]; then
     rm -rf "${extract_base}"
     echo ""
     echo "Finalized packages in: ${OUTPUT}/"
-    ls -lh "${OUTPUT}"/*.pkg.Z 2>/dev/null
+    ls -l "${OUTPUT}"/*.pkg.Z 2>/dev/null
     exit 0
 fi
 

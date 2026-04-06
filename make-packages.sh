@@ -1,4 +1,5 @@
 #!/opt/sst/bin/bash
+cd / 2>/dev/null  # suppress getcwd noise from snapshot's stale cwd
 # make-packages.sh — Create SVR4 .pkg.Z files from split staging
 #
 # This script takes the per-package staging directories created by
